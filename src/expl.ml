@@ -9,8 +9,9 @@
 (*******************************************************************)
 
 open Util
+open Hashcons
 
-type sexpl =
+type sexpl_ =
   | STT of int
   | SAtom of int * string
   | SNeg of vexpl
@@ -30,7 +31,7 @@ type sexpl =
   | SAlways of int * int * sexpl list
   | SSince of sexpl * sexpl list
   | SUntil of sexpl * sexpl list
-and vexpl =
+and vexpl_ =
   | VFF of int
   | VAtom of int * string
   | VNeg of sexpl
@@ -57,8 +58,73 @@ and vexpl =
   | VSinceOutL of int
   | VUntil of int * vexpl * vexpl list
   | VUntilInf of int * int * vexpl list
+and sexpl = sexpl_ hash_consed
+and vexpl = vexpl_ hash_consed
+
+let hash x = x.hkey
+let head x = x.node
+
+let m = Hashcons.create 271
 
 type expl = S of sexpl | V of vexpl
+
+let hashcons =
+  let s_hash = function
+    | STT i -> Hashtbl.hash (1, i)
+    | SAtom (i, x) -> Hashtbl.hash (2, i, x)
+    | SNeg vphi -> Hashtbl.hash (3, vphi.hkey)
+    | SDisjL sphi -> Hashtbl.hash (5, sphi.hkey)
+    | SDisjR spsi -> Hashtbl.hash (7, spsi.hkey)
+    | SConj (sphi, spsi) -> Hashtbl.hash (11, sphi.hkey, spsi.hkey)
+    | SImplL vphi -> Hashtbl.hash (13, vphi.hkey)
+    | SImplR spsi -> Hashtbl.hash (17, spsi.hkey)
+    | SIffSS (sphi, spsi) -> Hashtbl.hash (19, sphi.hkey, spsi.hkey)
+    | SIffVV (vphi, vpsi) -> Hashtbl.hash (23, vphi.hkey, vpsi.hkey)
+    | SPrev sphi -> Hashtbl.hash (29, sphi.hkey)
+    | SNext sphi -> Hashtbl.hash (31, sphi.hkey)
+    | SOnce (i, sphi) -> Hashtbl.hash (37, i, sphi.hkey)
+    | SHistorically (i, j, sphis) -> i
+    | SHistoricallyOutL i -> i
+    | SEventually (i, _) -> i
+    | SAlways (i, _, _) -> i
+    | SSince (spsi, sphis) -> (match sphis with
+                               | [] -> s_at spsi
+                               | _ -> s_at (last sphis))
+    | SUntil (spsi, sphis) -> (match sphis with
+                               | [] -> s_at spsi
+                               | x :: _ -> s_at x)
+
+
+
+and v_at = function
+  | VFF i -> i
+  | VAtom (i, _) -> i
+  | VNeg sphi -> s_at sphi
+  | VDisj (vphi, _) -> v_at vphi
+  | VConjL vphi -> v_at vphi
+  | VConjR vpsi -> v_at vpsi
+  | VImpl (sphi, _) -> s_at sphi
+  | VIffSV (sphi, _) -> s_at sphi
+  | VIffVS (vphi, _) -> v_at vphi
+  | VPrev0 -> 0
+  | VPrevOutL i -> i
+  | VPrevOutR i -> i
+  | VPrev vphi -> v_at vphi + 1
+  | VNextOutL i -> i
+  | VNextOutR i -> i
+  | VNext vphi -> v_at vphi - 1
+  | VOnceOutL i -> i
+  | VOnce (i, _, _) -> i
+  | VHistorically (i, _) -> i
+  | VEventually (i, _, _) -> i
+  | VAlways (i, _) -> i
+  | VSince (i, _, _) -> i
+  | VSinceInf (i, _, _) -> i
+  | VSinceOutL i -> i
+  | VUntil (i, _, _) -> i
+  | VUntilInf (i, _, _) -> i
+
+
 
 exception VEXPL
 exception SEXPL
