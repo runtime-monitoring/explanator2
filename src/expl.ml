@@ -11,7 +11,10 @@
 open Util
 open Hashcons
 
-type sexpl_ =
+type 'a list_ = ('a list) hash_consed
+
+type sexpl = sexpl_ hash_consed
+and sexpl_ =
   | STT of int
   | SAtom of int * string
   | SNeg of vexpl
@@ -25,12 +28,13 @@ type sexpl_ =
   | SPrev of sexpl
   | SNext of sexpl
   | SOnce of int * sexpl
-  | SHistorically of int * int * sexpl list
+  | SHistorically of int * int * sexpl list_
   | SHistoricallyOutL of int
   | SEventually of int * sexpl
-  | SAlways of int * int * sexpl list
-  | SSince of sexpl * sexpl list
-  | SUntil of sexpl * sexpl list
+  | SAlways of int * int * sexpl list_
+  | SSince of sexpl * sexpl list_
+  | SUntil of sexpl * sexpl list_
+and vexpl = vexpl_ hash_consed
 and vexpl_ =
   | VFF of int
   | VAtom of int * string
@@ -49,82 +53,101 @@ and vexpl_ =
   | VNextOutR of int
   | VNext of vexpl
   | VOnceOutL of int
-  | VOnce of int * int * vexpl list
+  | VOnce of int * int * vexpl list_
   | VHistorically of int * vexpl
-  | VEventually of int * int * vexpl list
+  | VEventually of int * int * vexpl list_
   | VAlways of int * vexpl
-  | VSince of int * vexpl * vexpl list
-  | VSinceInf of int * int * vexpl list
+  | VSince of int * vexpl * vexpl list_
+  | VSinceInf of int * int * vexpl list_
   | VSinceOutL of int
-  | VUntil of int * vexpl * vexpl list
-  | VUntilInf of int * int * vexpl list
-and sexpl = sexpl_ hash_consed
-and vexpl = vexpl_ hash_consed
+  | VUntil of int * vexpl * vexpl list_
+  | VUntilInf of int * int * vexpl list_
 
 let hash x = x.hkey
 let head x = x.node
 
-let m = Hashcons.create 271
+let m1 = Hashcons.create 271
+let m2 = Hashcons.create 271
 
 type expl = S of sexpl | V of vexpl
 
-let hashcons =
-  let s_hash = function
-    | STT i -> Hashtbl.hash (1, i)
-    | SAtom (i, x) -> Hashtbl.hash (2, i, x)
-    | SNeg vphi -> Hashtbl.hash (3, vphi.hkey)
-    | SDisjL sphi -> Hashtbl.hash (5, sphi.hkey)
-    | SDisjR spsi -> Hashtbl.hash (7, spsi.hkey)
-    | SConj (sphi, spsi) -> Hashtbl.hash (11, sphi.hkey, spsi.hkey)
-    | SImplL vphi -> Hashtbl.hash (13, vphi.hkey)
-    | SImplR spsi -> Hashtbl.hash (17, spsi.hkey)
-    | SIffSS (sphi, spsi) -> Hashtbl.hash (19, sphi.hkey, spsi.hkey)
-    | SIffVV (vphi, vpsi) -> Hashtbl.hash (23, vphi.hkey, vpsi.hkey)
-    | SPrev sphi -> Hashtbl.hash (29, sphi.hkey)
-    | SNext sphi -> Hashtbl.hash (31, sphi.hkey)
-    | SOnce (i, sphi) -> Hashtbl.hash (37, i, sphi.hkey)
-    | SHistorically (i, j, sphis) -> i
-    | SHistoricallyOutL i -> i
-    | SEventually (i, _) -> i
-    | SAlways (i, _, _) -> i
-    | SSince (spsi, sphis) -> (match sphis with
-                               | [] -> s_at spsi
-                               | _ -> s_at (last sphis))
-    | SUntil (spsi, sphis) -> (match sphis with
-                               | [] -> s_at spsi
-                               | x :: _ -> s_at x)
+let s_hash = function
+  | STT i -> Hashtbl.hash (2, i)
+  | SAtom (i, x) -> Hashtbl.hash (3, i, x)
+  | SNeg vphi -> Hashtbl.hash (5, vphi.hkey)
+  | SDisjL sphi -> Hashtbl.hash (7, sphi.hkey)
+  | SDisjR spsi -> Hashtbl.hash (11, spsi.hkey)
+  | SConj (sphi, spsi) -> Hashtbl.hash (13, sphi.hkey, spsi.hkey)
+  | SImplL vphi -> Hashtbl.hash (17, vphi.hkey)
+  | SImplR spsi -> Hashtbl.hash (19, spsi.hkey)
+  | SIffSS (sphi, spsi) -> Hashtbl.hash (23, sphi.hkey, spsi.hkey)
+  | SIffVV (vphi, vpsi) -> Hashtbl.hash (29, vphi.hkey, vpsi.hkey)
+  | SPrev sphi -> Hashtbl.hash (31, sphi.hkey)
+  | SNext sphi -> Hashtbl.hash (37, sphi.hkey)
+  | SOnce (i, sphi) -> Hashtbl.hash (41, i, sphi.hkey)
+  | SHistorically (i, li, sphis) -> Hashtbl.hash (43, i, li, sphis.hkey)
+  | SHistoricallyOutL i -> Hashtbl.hash (47, i)
+  | SEventually (i, sphi) -> Hashtbl.hash (53, i, sphi.hkey)
+  | SAlways (i, hi, sphis) -> Hashtbl.hash (59, i, hi, sphis.hkey)
+  | SSince (spsi, sphis) -> Hashtbl.hash (61, spsi.hkey, sphis.hkey)
+  | SUntil (spsi, sphis) -> Hashtbl.hash (67, spsi.hkey, sphis.hkey)
+and v_hash = function
+  | VFF i -> Hashtbl.hash (71, i)
+  | VAtom (i, x) -> Hashtbl.hash (73, i, x)
+  | VNeg sphi -> Hashtbl.hash (79, sphi.hkey)
+  | VDisj (vphi, vpsi) -> Hashtbl.hash (83, vphi.hkey, vpsi.hkey)
+  | VConjL vphi -> Hashtbl.hash (89, vphi.hkey)
+  | VConjR vpsi -> Hashtbl.hash (97, vpsi.hkey)
+  | VImpl (sphi, vpsi) -> Hashtbl.hash (101, sphi.hkey, vpsi.hkey)
+  | VIffSV (sphi, vpsi) -> Hashtbl.hash (103, sphi.hkey, vpsi.hkey)
+  | VIffVS (vphi, spsi) -> Hashtbl.hash (107, vphi.hkey, spsi.hkey)
+  | VPrev0 -> Hashtbl.hash (109)
+  | VPrevOutL i -> Hashtbl.hash (113, i)
+  | VPrevOutR i -> Hashtbl.hash (127, i)
+  | VPrev vphi -> Hashtbl.hash (131, vphi.hkey)
+  | VNextOutL i -> Hashtbl.hash (137, i)
+  | VNextOutR i -> Hashtbl.hash (139, i)
+  | VNext vphi -> Hashtbl.hash (149, vphi.hkey)
+  | VOnceOutL i -> Hashtbl.hash (151, i)
+  | VOnce (i, li, vphis) -> Hashtbl.hash (157, i, li, vphis.hkey)
+  | VHistorically (i, vphi) -> Hashtbl.hash (163, i, vphi.hkey)
+  | VEventually (i, hi, vphis) -> Hashtbl.hash (167, i, hi, vphis.hkey)
+  | VAlways (i, vphi) -> Hashtbl.hash (173, i, vphi.hkey)
+  | VSince (i, vphi, vpsis) -> Hashtbl.hash (173, i, vphi.hkey, vpsis.hkey)
+  | VSinceInf (i, li, vpsis) -> Hashtbl.hash (179, i, li, vpsis.hkey)
+  | VSinceOutL i -> Hashtbl.hash (181, i)
+  | VUntil (i, vphi, vpsis) -> Hashtbl.hash (191, i, vphi.hkey, vpsis.hkey)
+  | VUntilInf (i, hi, vpsis) -> Hashtbl.hash (193, i, hi, vpsis.hkey)
 
+(* let s_equal x y = match x, y with *)
+(*   | STT i, STT i' -> i == i' *)
+(*   | SAtom (i, x), SAtom (i', x') -> i = i' && x = x' *)
+(*   | SNeg p, SNeg p' -> p == p' *)
+(*   | SImplL p, SImplL p' -> p == p' *)
+(*   | SImplR p, SImplR p' -> p == p' *)
+(*   | SDisjL p, SDisjL p' *)
+(*   | SDisjR p, SDisjR p' *)
+(*   | SPrev p, SPrev p' *)
+(*   | SNext p, SNext p' -> p == p' *)
+(*   | SConj (p1, p2), SConj (p1', p2') -> p1 == p1' && p2 == p2' *)
+(*   | SIffSS (p1, p2), SIffSS (p1', p2') -> p1 == p1' && p2 == p2' *)
+(*   | SIffVV (p1, p2), SIffVV (p1', p2') -> p1 == p1' && p2 == p2' *)
+(*   | SOnce (i, p), SOnce (i', p') *)
+(*   | SEventually (i, p), SEventually (i', p') -> i == i' && p == p' *)
+(*   | SHistoricallyOutL i, SHistoricallyOutL i' -> i == i' *)
+(*   | SHistorically (i, j, ps), SHistorically (i', j', ps') *)
+(*   | SAlways (i, j, ps), SAlways (i', j', ps') -> i == i' && j == j' && ps == ps *)
+(*   | SSince (p1, p2s), SSince (p1', p2s') *)
+(*   | SUntil (p1, p2s), SUntil (p1', p2s') -> p1 == p1' && p2s == p2s' *)
+(*   | _ -> false *)
 
+let s_hashcons sp =
+  Hashcons.hashcons m1 s_hash
 
-and v_at = function
-  | VFF i -> i
-  | VAtom (i, _) -> i
-  | VNeg sphi -> s_at sphi
-  | VDisj (vphi, _) -> v_at vphi
-  | VConjL vphi -> v_at vphi
-  | VConjR vpsi -> v_at vpsi
-  | VImpl (sphi, _) -> s_at sphi
-  | VIffSV (sphi, _) -> s_at sphi
-  | VIffVS (vphi, _) -> v_at vphi
-  | VPrev0 -> 0
-  | VPrevOutL i -> i
-  | VPrevOutR i -> i
-  | VPrev vphi -> v_at vphi + 1
-  | VNextOutL i -> i
-  | VNextOutR i -> i
-  | VNext vphi -> v_at vphi - 1
-  | VOnceOutL i -> i
-  | VOnce (i, _, _) -> i
-  | VHistorically (i, _) -> i
-  | VEventually (i, _, _) -> i
-  | VAlways (i, _) -> i
-  | VSince (i, _, _) -> i
-  | VSinceInf (i, _, _) -> i
-  | VSinceOutL i -> i
-  | VUntil (i, _, _) -> i
-  | VUntilInf (i, _, _) -> i
+let v_hashcons =
+  Hashcons.hashcons m2 v_hash
 
-
+let stt i = s_hashcons (STT i)
 
 exception VEXPL
 exception SEXPL
@@ -137,7 +160,7 @@ let expl_to_bool = function
   | V _ -> false
 
 let sappend sp sp1 = match sp with
-  | SSince (sp2, sp1s) -> SSince (sp2, List.append sp1s [sp1])
+  | SSince (sp2, sp1s) -> SSince (sp2, hash List.append (head sp1s) [sp1])
   | SUntil (sp2, sp1s) -> SUntil (sp2, sp1 :: sp1s)
   | _ -> failwith "Bad arguments for sappend"
 
