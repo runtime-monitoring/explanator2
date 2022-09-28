@@ -63,13 +63,13 @@ and vexpl_ =
   | VUntil of int * vexpl * vexpl list_
   | VUntilInf of int * int * vexpl list_
 
+type expl = S of sexpl | V of vexpl
+
 let hash x = x.hkey
 let head x = x.node
 
 let m1 = Hashcons.create 271
 let m2 = Hashcons.create 271
-
-type expl = S of sexpl | V of vexpl
 
 let s_hash = function
   | STT i -> Hashtbl.hash (2, i)
@@ -119,35 +119,38 @@ and v_hash = function
   | VUntil (i, vphi, vpsis) -> Hashtbl.hash (191, i, vphi.hkey, vpsis.hkey)
   | VUntilInf (i, hi, vpsis) -> Hashtbl.hash (193, i, hi, vpsis.hkey)
 
-(* let s_equal x y = match x, y with *)
-(*   | STT i, STT i' -> i == i' *)
-(*   | SAtom (i, x), SAtom (i', x') -> i = i' && x = x' *)
-(*   | SNeg p, SNeg p' -> p == p' *)
-(*   | SImplL p, SImplL p' -> p == p' *)
-(*   | SImplR p, SImplR p' -> p == p' *)
-(*   | SDisjL p, SDisjL p' *)
-(*   | SDisjR p, SDisjR p' *)
-(*   | SPrev p, SPrev p' *)
-(*   | SNext p, SNext p' -> p == p' *)
-(*   | SConj (p1, p2), SConj (p1', p2') -> p1 == p1' && p2 == p2' *)
-(*   | SIffSS (p1, p2), SIffSS (p1', p2') -> p1 == p1' && p2 == p2' *)
-(*   | SIffVV (p1, p2), SIffVV (p1', p2') -> p1 == p1' && p2 == p2' *)
-(*   | SOnce (i, p), SOnce (i', p') *)
-(*   | SEventually (i, p), SEventually (i', p') -> i == i' && p == p' *)
-(*   | SHistoricallyOutL i, SHistoricallyOutL i' -> i == i' *)
-(*   | SHistorically (i, j, ps), SHistorically (i', j', ps') *)
-(*   | SAlways (i, j, ps), SAlways (i', j', ps') -> i == i' && j == j' && ps == ps *)
-(*   | SSince (p1, p2s), SSince (p1', p2s') *)
-(*   | SUntil (p1, p2s), SUntil (p1', p2s') -> p1 == p1' && p2s == p2s' *)
-(*   | _ -> false *)
-
-let s_hashcons sp =
-  Hashcons.hashcons m1 s_hash
+let s_hashcons =
+  let s_equal x y = match x, y with
+    | STT i, STT i' -> i == i'
+    | SAtom (i, x), SAtom (i', x') -> i = i' && x = x'
+    | SNeg p, SNeg p' -> p == p'
+    | SImplL p, SImplL p' -> p == p'
+    | SImplR p, SImplR p' -> p == p'
+    | SDisjL p, SDisjL p'
+    | SDisjR p, SDisjR p'
+    | SPrev p, SPrev p'
+    | SNext p, SNext p' -> p == p'
+    | SConj (p1, p2), SConj (p1', p2') -> p1 == p1' && p2 == p2'
+    | SIffSS (p1, p2), SIffSS (p1', p2') -> p1 == p1' && p2 == p2'
+    | SIffVV (p1, p2), SIffVV (p1', p2') -> p1 == p1' && p2 == p2'
+    | SOnce (i, p), SOnce (i', p')
+    | SEventually (i, p), SEventually (i', p') -> i == i' && p == p'
+    | SHistoricallyOutL i, SHistoricallyOutL i' -> i == i'
+    | SHistorically (i, j, ps), SHistorically (i', j', ps')
+    | SAlways (i, j, ps), SAlways (i', j', ps') -> i == i' && j == j' && ps == ps
+    | SSince (p1, p2s), SSince (p1', p2s')
+    | SUntil (p1, p2s), SUntil (p1', p2s') -> p1 == p1' && p2s == p2s'
+    | _ -> false in
+  Hashcons.hashcons s_hash s_equal m1
 
 let v_hashcons =
-  Hashcons.hashcons m2 v_hash
+  let v_equal x y = match x, y with
+    | _ -> false in
+  Hashcons.hashcons v_hash v_equal m2
 
 let stt i = s_hashcons (STT i)
+let satom (i, x) = s_hashcons (SAtom (i, x))
+let ssince (p1, p2s) = s_hashcons (SSince (p1, p2s))
 
 exception VEXPL
 exception SEXPL
@@ -160,7 +163,7 @@ let expl_to_bool = function
   | V _ -> false
 
 let sappend sp sp1 = match sp with
-  | SSince (sp2, sp1s) -> SSince (sp2, hash List.append (head sp1s) [sp1])
+  | SSince (sp2, sp1s) -> SSince (sp2, List.append sp1s [sp1])
   | SUntil (sp2, sp1s) -> SUntil (sp2, sp1 :: sp1s)
   | _ -> failwith "Bad arguments for sappend"
 
