@@ -6,4 +6,4 @@
 
 (library
  (name src)
- (libraries core_kernel base zarith hashcons))
+ (libraries core_kernel base zarith))
