@@ -11,7 +11,10 @@
 open Util
 open Hashcons
 
-type 'a list_ = ('a list) hash_consed
+type 'a hlist_ =
+  | HNil
+  | HCons of 'a hash_consed * 'a hlist
+and 'a hlist = ('a hlist_) hash_consed
 
 type sexpl = sexpl_ hash_consed
 and sexpl_ =
@@ -28,12 +31,12 @@ and sexpl_ =
   | SPrev of sexpl
   | SNext of sexpl
   | SOnce of int * sexpl
-  | SHistorically of int * int * sexpl list_
+  | SHistorically of int * int * sexpl hlist
   | SHistoricallyOutL of int
   | SEventually of int * sexpl
-  | SAlways of int * int * sexpl list_
-  | SSince of sexpl * sexpl list_
-  | SUntil of sexpl * sexpl list_
+  | SAlways of int * int * sexpl hlist
+  | SSince of sexpl * sexpl hlist
+  | SUntil of sexpl * sexpl hlist
 and vexpl = vexpl_ hash_consed
 and vexpl_ =
   | VFF of int
@@ -53,15 +56,15 @@ and vexpl_ =
   | VNextOutR of int
   | VNext of vexpl
   | VOnceOutL of int
-  | VOnce of int * int * vexpl list_
+  | VOnce of int * int * vexpl hlist
   | VHistorically of int * vexpl
-  | VEventually of int * int * vexpl list_
+  | VEventually of int * int * vexpl hlist
   | VAlways of int * vexpl
-  | VSince of int * vexpl * vexpl list_
-  | VSinceInf of int * int * vexpl list_
+  | VSince of int * vexpl * vexpl hlist
+  | VSinceInf of int * int * vexpl hlist
   | VSinceOutL of int
-  | VUntil of int * vexpl * vexpl list_
-  | VUntilInf of int * int * vexpl list_
+  | VUntil of int * vexpl * vexpl hlist
+  | VUntilInf of int * int * vexpl hlist
 
 type expl = S of sexpl | V of vexpl
 
@@ -70,6 +73,11 @@ let head x = x.node
 
 let m1 = Hashcons.create 271
 let m2 = Hashcons.create 271
+let m3 = Hashcons.create 271
+
+let hlist_hash = function
+  | HNil -> Hashtbl.hash (2)
+  | HCons (x, xs) -> Hashtbl.hash(3, x.hkey, xs.hkey)
 
 let s_hash = function
   | STT i -> Hashtbl.hash (2, i)
@@ -119,6 +127,13 @@ and v_hash = function
   | VUntil (i, vphi, vpsis) -> Hashtbl.hash (191, i, vphi.hkey, vpsis.hkey)
   | VUntilInf (i, hi, vpsis) -> Hashtbl.hash (193, i, hi, vpsis.hkey)
 
+let hlist_hashcons =
+  let hlist_equal x y = match x, y with
+    | HNil, HNil -> true
+    | HCons (z, zs), HCons (z', zs') -> z == z' && zs == zs'
+    | _ -> false in
+  Hashcons.hashcons hlist_hash hlist_equal m1
+
 let s_hashcons =
   let s_equal x y = match x, y with
     | STT i, STT i' -> i == i'
@@ -134,19 +149,26 @@ let s_hashcons =
     | SIffSS (p1, p2), SIffSS (p1', p2') -> p1 == p1' && p2 == p2'
     | SIffVV (p1, p2), SIffVV (p1', p2') -> p1 == p1' && p2 == p2'
     | SOnce (i, p), SOnce (i', p')
-    | SEventually (i, p), SEventually (i', p') -> i == i' && p == p'
-    | SHistoricallyOutL i, SHistoricallyOutL i' -> i == i'
+    | SEventually (i, p), SEventually (i', p') -> i = i' && p == p'
+    | SHistoricallyOutL i, SHistoricallyOutL i' -> i = i'
     | SHistorically (i, j, ps), SHistorically (i', j', ps')
-    | SAlways (i, j, ps), SAlways (i', j', ps') -> i == i' && j == j' && ps == ps
+    | SAlways (i, j, ps), SAlways (i', j', ps') -> i = i' && j == j' && ps == ps'
     | SSince (p1, p2s), SSince (p1', p2s')
     | SUntil (p1, p2s), SUntil (p1', p2s') -> p1 == p1' && p2s == p2s'
     | _ -> false in
-  Hashcons.hashcons s_hash s_equal m1
+  Hashcons.hashcons s_hash s_equal m2
 
 let v_hashcons =
   let v_equal x y = match x, y with
     | _ -> false in
-  Hashcons.hashcons v_hash v_equal m2
+  Hashcons.hashcons v_hash v_equal m3
+
+let hnil = hlist_hashcons (HNil)
+let hcons x xs = hlist_hashcons (HCons (x, xs))
+
+let stt i = s_hashcons (STT i)
+let satom (i, x) = s_hashcons (SAtom (i, x))
+let ssince (p1, p2s) = s_hashcons (SSince (p1, p2s))
 
 let memo_rec f =
   let t1 = ref Hmap.empty in
@@ -155,17 +177,13 @@ let memo_rec f =
     try Hmap.find sp !t1
     with Not_found ->
       let z = f s_aux v_aux (S sp) in
-      tx := Hmap.add sp z !t1; z in
-  let rec v_aux vp =
+      t1 := Hmap.add sp z !t1; z
+  and v_aux vp =
     try Hmap.find vp !t2
     with Not_found ->
       let z = f s_aux v_aux (V vp) in
-      tx := Hmap.add vp z !t1; z in
-  in ...
-
-let stt i = s_hashcons (STT i)
-let satom (i, x) = s_hashcons (SAtom (i, x))
-let ssince (p1, p2s) = s_hashcons (SSince (p1, p2s))
+      t2 := Hmap.add vp z !t2; z
+  in (s_aux, v_aux)
 
 exception VEXPL
 exception SEXPL
@@ -179,7 +197,7 @@ let expl_to_bool = function
 
 let sappend sp sp1 = match sp with
   | SSince (sp2, sp1s) -> SSince (sp2, List.append sp1s [sp1])
-  | SUntil (sp2, sp1s) -> SUntil (sp2, sp1 :: sp1s)
+  | SUntil (sp2, sp1s) -> SUntil (sp2, hcons sp1 sp1s)
   | _ -> failwith "Bad arguments for sappend"
 
 let vappend vp vp2 = match vp with

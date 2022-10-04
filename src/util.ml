@@ -67,7 +67,7 @@ let get_mins le ps =
 
 let drop_front l =
   match l with
-  | [] -> raise EMPTY_LIST
+  | [] -> []
   | _ :: xs -> xs
 
 let count_lines file =
