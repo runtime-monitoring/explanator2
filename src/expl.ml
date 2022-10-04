@@ -11,10 +11,10 @@
 open Util
 open Hashcons
 
-type 'a hlist_ =
+type 'a hlist = ('a hlist_) hash_consed
+and 'a hlist_ =
   | HNil
   | HCons of 'a hash_consed * 'a hlist
-and 'a hlist = ('a hlist_) hash_consed
 
 type sexpl = sexpl_ hash_consed
 and sexpl_ =
@@ -75,9 +75,15 @@ let m1 = Hashcons.create 271
 let m2 = Hashcons.create 271
 let m3 = Hashcons.create 271
 
-let hlist_hash = function
-  | HNil -> Hashtbl.hash (2)
-  | HCons (x, xs) -> Hashtbl.hash(3, x.hkey, xs.hkey)
+let hlist_hashcons =
+  let hlist_hash = function
+    | HNil -> Hashtbl.hash (2)
+    | HCons (x, xs) -> Hashtbl.hash(3, x.hkey, xs.hkey) in
+  let hlist_equal x y = match x, y with
+    | HNil, HNil -> true
+    | HCons (z, zs), HCons (z', zs') -> z == z' && zs == zs'
+    | _ -> false in
+  Hashcons.hashcons hlist_hash hlist_equal m1
 
 let s_hash = function
   | STT i -> Hashtbl.hash (2, i)
@@ -127,16 +133,9 @@ and v_hash = function
   | VUntil (i, vphi, vpsis) -> Hashtbl.hash (191, i, vphi.hkey, vpsis.hkey)
   | VUntilInf (i, hi, vpsis) -> Hashtbl.hash (193, i, hi, vpsis.hkey)
 
-let hlist_hashcons =
-  let hlist_equal x y = match x, y with
-    | HNil, HNil -> true
-    | HCons (z, zs), HCons (z', zs') -> z == z' && zs == zs'
-    | _ -> false in
-  Hashcons.hashcons hlist_hash hlist_equal m1
-
 let s_hashcons =
   let s_equal x y = match x, y with
-    | STT i, STT i' -> i == i'
+    | STT i, STT i' -> i = i'
     | SAtom (i, x), SAtom (i', x') -> i = i' && x = x'
     | SNeg p, SNeg p' -> p == p'
     | SImplL p, SImplL p' -> p == p'
@@ -152,14 +151,40 @@ let s_hashcons =
     | SEventually (i, p), SEventually (i', p') -> i = i' && p == p'
     | SHistoricallyOutL i, SHistoricallyOutL i' -> i = i'
     | SHistorically (i, j, ps), SHistorically (i', j', ps')
-    | SAlways (i, j, ps), SAlways (i', j', ps') -> i = i' && j == j' && ps == ps'
-    | SSince (p1, p2s), SSince (p1', p2s')
-    | SUntil (p1, p2s), SUntil (p1', p2s') -> p1 == p1' && p2s == p2s'
+    | SAlways (i, j, ps), SAlways (i', j', ps') -> i = i' && j = j' && ps == ps'
+    | SSince (p2, p1s), SSince (p2', p1s')
+    | SUntil (p2, p1s), SUntil (p2', p1s') -> p2 == p2' && p1s == p1s'
     | _ -> false in
   Hashcons.hashcons s_hash s_equal m2
 
 let v_hashcons =
   let v_equal x y = match x, y with
+    | VFF i, VFF i' -> i = i'
+    | VAtom (i, x), VAtom (i', x') -> i = i' && x = x'
+    | VNeg p, VNeg p' -> p == p'
+    | VImpl (p1, p2), VImpl (p1', p2') -> p1 == p1' && p2 == p2'
+    | VIffSV (p1, p2), VIffSV (p1', p2') -> p1 == p1' && p2 == p2'
+    | VIffVS (p1, p2), VIffVS (p1', p2') -> p1 == p1' && p2 == p2'
+    | VConjL p, VConjL p'
+    | VConjR p, VConjR p'
+    | VPrev p, VPrev p'
+    | VNext p, VNext p' -> p == p'
+    | VPrev0, VPrev0 -> true
+    | VPrevOutL i, VPrevOutL i'
+    | VPrevOutR i, VPrevOutR i'
+    | VNextOutL i, VNextOutL i'
+    | VNextOutR i, VNextOutR i'
+    | VOnceOutL i, VOnceOutL i'
+    | VSinceOutL i, VSinceOutL i' -> i = i'
+    | VDisj (p1, p2), VDisj (p1', p2') -> p1 == p1' && p2 == p2'
+    | VHistorically (i, p), VHistorically (i', p')
+    | VAlways (i, p), VAlways (i', p') -> i = i' && p == p'
+    | VOnce (i, j, ps), VOnce (i', j', ps')
+    | VEventually (i, j, ps), VEventually (i', j', ps')
+    | VSinceInf (i, j, ps), VSinceInf (i', j', ps')
+    | VUntilInf (i, j, ps), VUntilInf (i', j', ps') -> i = i' && j = j' && ps == ps'
+    | VSince (i, p1, p2s), VSince (i', p1', p2s')
+    | VUntil (i, p1, p2s), VUntil (i', p1', p2s') -> i = i' && p1 == p1' && p2s == p2s'
     | _ -> false in
   Hashcons.hashcons v_hash v_equal m3
 
@@ -168,7 +193,50 @@ let hcons x xs = hlist_hashcons (HCons (x, xs))
 
 let stt i = s_hashcons (STT i)
 let satom (i, x) = s_hashcons (SAtom (i, x))
+let sneg p = s_hashcons (SNeg p)
+let sdisjl p = s_hashcons (SDisjL p)
+let sdisjr p = s_hashcons (SDisjR p)
+let sconj (p1, p2) = s_hashcons (SConj (p1, p2))
+let simpll p = s_hashcons (SImplL p)
+let simplr p = s_hashcons (SImplR p)
+let siffss (p1, p2) = s_hashcons (SIffSS (p1, p2))
+let siffvv (p1, p2) = s_hashcons (SIffVV (p1, p2))
+let sprev p = s_hashcons (SPrev p)
+let snext p = s_hashcons (SNext p)
+let sonce (i, p) = s_hashcons (SOnce (i, p))
+let shistorically (i, li, ps) = s_hashcons (SHistorically (i, li, ps))
+let shistoricallyoutl i = s_hashcons (SHistoricallyOutL i)
+let seventually (i, p) = s_hashcons (SEventually (i, p))
+let salways (i, hi, ps) = s_hashcons (SAlways (i, hi, ps))
 let ssince (p1, p2s) = s_hashcons (SSince (p1, p2s))
+let suntil (p1, p2s) = s_hashcons (SUntil (p1, p2s))
+
+let vff i = v_hashcons (VFF i)
+let vatom (i, x) = v_hashcons (VAtom (i, x))
+let vneg p = v_hashcons (VNeg p)
+let vdisj (p1, p2) = v_hashcons (VDisj (p1, p2))
+let vconjl p = v_hashcons (VConjL p)
+let vconjr p = v_hashcons (VConjR p)
+let vimpl (p1, p2) = v_hashcons (VImpl (p1, p2))
+let viffsv (p1, p2) = v_hashcons (VIffSV (p1, p2))
+let viffvs (p1, p2) = v_hashcons (VIffVS (p1, p2))
+let vprev0 = v_hashcons VPrev0
+let vprevoutl i = v_hashcons (VPrevOutL i)
+let vprevoutr i = v_hashcons (VPrevOutR i)
+let vprev p = v_hashcons (VPrev p)
+let vnextoutl i = v_hashcons (VNextOutL i)
+let vnextoutr i = v_hashcons (VNextOutR i)
+let vnext p = v_hashcons (VNext p)
+let vonceoutl i = v_hashcons (VOnceOutL i)
+let vonce (i, li, ps) = v_hashcons (VOnce (i, li, ps))
+let vhistorically (i, p) = v_hashcons (VHistorically (i, p))
+let veventually (i, hi, ps) = v_hashcons (VEventually (i, hi, ps))
+let valways (i, p) = v_hashcons (VAlways (i, p))
+let vsince (i, p1, p2s) = v_hashcons (VSince (i, p1, p2s))
+let vsinceinf (i, li, p2s) = v_hashcons (VSinceInf (i, li, p2s))
+let vsinceoutl i = v_hashcons (VSinceOutL i)
+let vuntil (i, p1, p2s) = v_hashcons (VUntil (i, p1, p2s))
+let vuntilinf (i, hi, p2s) = v_hashcons (VUntilInf (i, hi, p2s))
 
 let memo_rec f =
   let t1 = ref Hmap.empty in
@@ -184,6 +252,14 @@ let memo_rec f =
       let z = f s_aux v_aux (V vp) in
       t2 := Hmap.add vp z !t2; z
   in (s_aux, v_aux)
+
+let hlist_rev hlist =
+  let rec aux acc tail = match tail.node with
+    | HNil -> acc
+    | HCons (h, t) -> aux (HCons (h, acc)) t.node in
+  aux HNil hlist.node
+
+let hlist_append
 
 exception VEXPL
 exception SEXPL
