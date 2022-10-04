@@ -148,6 +148,21 @@ let v_hashcons =
     | _ -> false in
   Hashcons.hashcons v_hash v_equal m2
 
+let memo_rec f =
+  let t1 = ref Hmap.empty in
+  let t2 = ref Hmap.empty in
+  let rec s_aux sp =
+    try Hmap.find sp !t1
+    with Not_found ->
+      let z = f s_aux v_aux (S sp) in
+      tx := Hmap.add sp z !t1; z in
+  let rec v_aux vp =
+    try Hmap.find vp !t2
+    with Not_found ->
+      let z = f s_aux v_aux (V vp) in
+      tx := Hmap.add vp z !t1; z in
+  in ...
+
 let stt i = s_hashcons (STT i)
 let satom (i, x) = s_hashcons (SAtom (i, x))
 let ssince (p1, p2s) = s_hashcons (SSince (p1, p2s))
