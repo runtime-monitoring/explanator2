@@ -31,12 +31,12 @@ and sexpl_ =
   | SPrev of sexpl
   | SNext of sexpl
   | SOnce of int * sexpl
-  | SHistorically of int * int * sexpl hlist
+  | SHistorically of int * int * sexpl_ hlist
   | SHistoricallyOutL of int
   | SEventually of int * sexpl
-  | SAlways of int * int * sexpl hlist
-  | SSince of sexpl * sexpl hlist
-  | SUntil of sexpl * sexpl hlist
+  | SAlways of int * int * sexpl_ hlist
+  | SSince of sexpl * sexpl_ hlist
+  | SUntil of sexpl * sexpl_ hlist
 and vexpl = vexpl_ hash_consed
 and vexpl_ =
   | VFF of int
@@ -56,26 +56,27 @@ and vexpl_ =
   | VNextOutR of int
   | VNext of vexpl
   | VOnceOutL of int
-  | VOnce of int * int * vexpl hlist
+  | VOnce of int * int * vexpl_ hlist
   | VHistorically of int * vexpl
-  | VEventually of int * int * vexpl hlist
+  | VEventually of int * int * vexpl_ hlist
   | VAlways of int * vexpl
-  | VSince of int * vexpl * vexpl hlist
-  | VSinceInf of int * int * vexpl hlist
+  | VSince of int * vexpl * vexpl_ hlist
+  | VSinceInf of int * int * vexpl_ hlist
   | VSinceOutL of int
-  | VUntil of int * vexpl * vexpl hlist
-  | VUntilInf of int * int * vexpl hlist
+  | VUntil of int * vexpl * vexpl_ hlist
+  | VUntilInf of int * int * vexpl_ hlist
 
 type expl = S of sexpl | V of vexpl
 
 let m1 = Hashcons.create 271
 let m2 = Hashcons.create 271
 let m3 = Hashcons.create 271
+let m4 = Hashcons.create 271
 
 let hash x = x.hkey
 let head x = x.node
 
-let hlist_hashcons =
+let shlist_hashcons =
   let hash = function
     | HNil -> Hashtbl.hash 2
     | HCons (x, xs) -> Hashtbl.hash (3, x.hkey, xs.hkey) in
@@ -85,8 +86,21 @@ let hlist_hashcons =
     | _ -> false in
   Hashcons.hashcons hash equal m1
 
-let hnil = hlist_hashcons HNil
-let hcons (x: 'a hash_consed) (xs: 'a hlist) = hlist_hashcons (HCons (x, xs))
+let shnil = shlist_hashcons HNil
+let shcons (x: sexpl) (xs: sexpl_ hlist) = shlist_hashcons (HCons (x, xs))
+
+let vhlist_hashcons =
+  let hash = function
+    | HNil -> Hashtbl.hash 2
+    | HCons (x, xs) -> Hashtbl.hash (3, x.hkey, xs.hkey) in
+  let equal x y = match x, y with
+    | HNil, HNil -> true
+    | HCons (z, zs), HCons (z', zs') -> z == z' && zs == zs'
+    | _ -> false in
+  Hashcons.hashcons hash equal m2
+
+let vhnil = vhlist_hashcons HNil
+let vhcons (x: vexpl) (xs: vexpl_ hlist) = vhlist_hashcons (HCons (x, xs))
 
 let s_hash = function
   | STT i -> Hashtbl.hash (2, i)
@@ -158,7 +172,7 @@ let s_hashcons =
     | SSince (p2, p1s), SSince (p2', p1s')
     | SUntil (p2, p1s), SUntil (p2', p1s') -> p2 == p2' && p1s == p1s'
     | _ -> false in
-  Hashcons.hashcons s_hash s_equal m2
+  Hashcons.hashcons s_hash s_equal m3
 
 let v_hashcons =
   let v_equal x y = match x, y with
@@ -189,7 +203,7 @@ let v_hashcons =
     | VSince (i, p1, p2s), VSince (i', p1', p2s')
     | VUntil (i, p1, p2s), VUntil (i', p1', p2s') -> i = i' && p1 == p1' && p2s == p2s'
     | _ -> false in
-  Hashcons.hashcons v_hash v_equal m3
+  Hashcons.hashcons v_hash v_equal m4
 
 let stt i = s_hashcons (STT i)
 let satom (i, x) = s_hashcons (SAtom (i, x))
@@ -253,32 +267,65 @@ let memo_rec f =
       t2 := Hmap.add vp z !t2; z
   in (s_aux, v_aux)
 
-let hrev hl =
+let is_hnil hl =
+  match hl.node with
+  | HNil -> true
+  | HCons (_, _) -> false
+
+let is_hcons_hnil hl =
+  match hl.node with
+  | HCons (_, t) when is_hnil t -> true
+  | _ -> false
+
+let shrev hl =
   let rec aux acc tail = match tail.node with
     | HNil -> acc
-    | HCons (h, t) -> aux (hcons h acc) t in
-  aux hnil hl
+    | HCons (h, t) -> aux (shcons h acc) t in
+  aux shnil hl
+
+let vhrev hl =
+  let rec aux acc tail = match tail.node with
+    | HNil -> acc
+    | HCons (h, t) -> aux (vhcons h acc) t in
+  aux vhnil hl
 
 let htail hl = match hl.node with
-  |  HNil -> failwith "htail"
+  | HNil -> failwith "htail"
   | HCons (_, t) -> t
 
-let rec hmap f hl = match hl.node with
-  | HNil -> hnil
+let rec shmap f hl = match hl.node with
+  | HNil -> shnil
   | HCons (a1, tl) ->
      let r1 = f a1.node in
      match tl.node with
-     | HNil -> hcons r1 hnil
+     | HNil -> shcons r1 shnil
      | HCons (a2, tl') ->
         let r2 = f a2.node in
         match tl'.node with
-        | HNil -> hcons r1 (hcons r2 hnil)
+        | HNil -> shcons r1 (shcons r2 shnil)
         | HCons (a2, tl'') ->
-           hcons r1 (hcons r2 (hmap f tl''))
+           shcons r1 (shcons r2 (shmap f tl''))
 
-let rec hsnoc (hl: 'a hlist) a = match hl.node with
-  | HNil -> hcons a hnil
-  | HCons (x, xs) -> hcons x (hsnoc xs a)
+let rec vhmap f hl = match hl.node with
+  | HNil -> vhnil
+  | HCons (a1, tl) ->
+     let r1 = f a1.node in
+     match tl.node with
+     | HNil -> vhcons r1 vhnil
+     | HCons (a2, tl') ->
+        let r2 = f a2.node in
+        match tl'.node with
+        | HNil -> vhcons r1 (vhcons r2 vhnil)
+        | HCons (a2, tl'') ->
+           vhcons r1 (vhcons r2 (vhmap f tl''))
+
+let rec shsnoc (hl: sexpl_ hlist) a = match hl.node with
+  | HNil -> shcons a shnil
+  | HCons (x, xs) -> shcons x (shsnoc xs a)
+
+let rec vhsnoc (hl: vexpl_ hlist) a = match hl.node with
+  | HNil -> vhcons a vhnil
+  | HCons (x, xs) -> vhcons x (vhsnoc xs a)
 
 let rec hfold_left f acc hl =
   match hl.node with
@@ -302,30 +349,30 @@ let expl_to_bool = function
   | V _ -> false
 
 let sappend sp sp1 = match sp with
-  | SSince (sp2, sp1s) -> SSince (sp2, hsnoc sp1s sp1)
-  | SUntil (sp2, sp1s) -> SUntil (sp2, hcons sp1 sp1s)
+  | SSince (sp2, sp1s) -> SSince (sp2, shsnoc sp1s sp1)
+  | SUntil (sp2, sp1s) -> SUntil (sp2, shcons sp1 sp1s)
   | _ -> failwith "Bad arguments for sappend"
 
 let vappend vp vp2 = match vp with
-  | VSince (tp, vp1, vp2s) -> VSince (tp,  vp1, hsnoc vp2s vp2)
-  | VSinceInf (tp, etp, vp2s) -> VSinceInf (tp, etp, List.append vp2s [vp2])
-  | VUntil (tp, vp1, vp2s) -> VUntil (tp, vp1, vp2 :: vp2s)
-  | VUntilInf (tp, ltp, vp2s) -> VUntilInf (tp, ltp, vp2 :: vp2s)
+  | VSince (tp, vp1, vp2s) -> VSince (tp,  vp1, vhsnoc vp2s vp2)
+  | VSinceInf (tp, etp, vp2s) -> VSinceInf (tp, etp, vhsnoc vp2s vp2)
+  | VUntil (tp, vp1, vp2s) -> VUntil (tp, vp1, vhcons vp2 vp2s)
+  | VUntilInf (tp, ltp, vp2s) -> VUntilInf (tp, ltp, vhcons vp2 vp2s)
   | _ -> failwith "Bad arguments for vappend"
 
 let sdrop sp = match sp with
-  | SUntil (_, []) -> None
-  | SUntil (sp2, sp1s) -> Some (SUntil (sp2, drop_front sp1s))
+  | SUntil (_, sp1s) when is_hnil sp1s -> None
+  | SUntil (sp2, sp1s) -> Some (SUntil (sp2, htail sp1s))
   | _ -> failwith "Bad arguments for sdrop"
 
 let vdrop vp = match vp with
-  | VUntil (_, _, _::[]) -> None
-  | VUntil (tp, vp1, vp2s) -> Some (VUntil (tp, vp1, drop_front vp2s))
-  | VUntilInf (_, _, []) -> None
-  | VUntilInf (tp, ltp, vp2s) -> Some (VUntilInf (tp, ltp, drop_front vp2s))
+  | VUntil (_, _, vp2s) when is_hcons_hnil vp2s -> None
+  | VUntil (tp, vp1, vp2s) -> Some (VUntil (tp, vp1, htail vp2s))
+  | VUntilInf (_, _, vp2s) when is_hnil vp2s -> None
+  | VUntilInf (tp, ltp, vp2s) -> Some (VUntilInf (tp, ltp, htail vp2s))
   | _ -> failwith "Bad arguments for vdrop"
 
-let rec s_at = function
+let (s_at, v_at) = memo_rec (fun s_at v_at p -> match p.node with
   | STT i -> i
   | SAtom (i, _) -> i
   | SNeg vphi -> v_at vphi
