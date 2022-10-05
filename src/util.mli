@@ -29,6 +29,7 @@ val prod: ('a -> 'a -> bool) -> ('a -> 'a -> bool) -> 'a -> 'a -> bool
 val lex: ('a -> 'a -> bool) -> ('a -> 'a -> bool) -> 'a -> 'a -> bool
 val mk_le: ('a -> int) -> 'a -> 'a -> bool
 val sl_le: 'a -> 'a -> ('a -> 'a -> bool) -> bool
+val eat: string -> string -> string
 val list_to_string: string -> (string -> 'a -> string) -> 'a list -> string
 val get_mins: ('a -> 'a -> bool) -> 'a list -> 'a list
 val drop_front: 'a list -> 'a list

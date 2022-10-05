@@ -68,22 +68,22 @@ and vexpl_ =
 
 type expl = S of sexpl | V of vexpl
 
-let hash x = x.hkey
-let head x = x.node
-
 let m1 = Hashcons.create 271
 let m2 = Hashcons.create 271
 let m3 = Hashcons.create 271
 
+let hash x = x.hkey
+let head x = x.node
+
 let hlist_hashcons =
-  let hlist_hash = function
-    | HNil -> Hashtbl.hash (2)
-    | HCons (x, xs) -> Hashtbl.hash(3, x.hkey, xs.hkey) in
-  let hlist_equal x y = match x, y with
+  let hash = function
+    | HNil -> Hashtbl.hash 2
+    | HCons (x, xs) -> Hashtbl.hash (3, x.hkey, xs.hkey) in
+  let equal x y = match x, y with
     | HNil, HNil -> true
     | HCons (z, zs), HCons (z', zs') -> z == z' && zs == zs'
     | _ -> false in
-  Hashcons.hashcons hlist_hash hlist_equal m1
+  Hashcons.hashcons hash equal m1
 
 let s_hash = function
   | STT i -> Hashtbl.hash (2, i)
@@ -188,7 +188,7 @@ let v_hashcons =
     | _ -> false in
   Hashcons.hashcons v_hash v_equal m3
 
-let hnil = hlist_hashcons (HNil)
+let hnil = hlist_hashcons HNil
 let hcons x xs = hlist_hashcons (HCons (x, xs))
 
 let stt i = s_hashcons (STT i)
@@ -253,13 +253,43 @@ let memo_rec f =
       t2 := Hmap.add vp z !t2; z
   in (s_aux, v_aux)
 
-let hlist_rev hlist =
+let hrev hl =
   let rec aux acc tail = match tail.node with
     | HNil -> acc
-    | HCons (h, t) -> aux (HCons (h, acc)) t.node in
-  aux HNil hlist.node
+    | HCons (h, t) -> aux (hcons h acc) t in
+  aux hnil hl
 
-let hlist_append
+let htail hl = match hl.node with
+  |  HNil -> failwith "htail"
+  | HCons (_, t) -> t
+
+let rec hmap f hl = match hl.node with
+  | HNil -> hnil
+  | HCons (a1, tl) ->
+     let r1 = f a1.node in
+     match tl.node with
+     | HNil -> hcons r1 hnil
+     | HCons (a2, tl') ->
+        let r2 = f a2.node in
+        match tl'.node with
+        | HNil -> hcons r1 (hcons r2 hnil)
+        | HCons (a2, tl'') ->
+           hcons r1 (hcons r2 (hmap f tl''))
+
+let rec hsnoc (hl: 'a hlist) a = match hl.node with
+  | HNil -> hcons a hnil
+  | HCons (x, xs) -> hcons x (hsnoc xs a)
+
+let rec hfold_left f acc hl =
+  match hl.node with
+  | HNil -> acc
+  | HCons (x, xs) -> hfold_left f (f acc x) xs
+
+let hlist_to_string indent f hl = match hl.node with
+  | HNil -> indent ^ "[]"
+  | HCons (x, hnil) -> indent ^ eat "[" (f indent x ^ "]")
+  | HCons (x, xs) -> hfold_left (fun s el -> eat (s ^ "\n" ^ indent ^ "; ") (f indent el))
+                       (indent ^ eat "[ " (f indent x)) xs ^ " ]"
 
 exception VEXPL
 exception SEXPL
@@ -272,12 +302,12 @@ let expl_to_bool = function
   | V _ -> false
 
 let sappend sp sp1 = match sp with
-  | SSince (sp2, sp1s) -> SSince (sp2, List.append sp1s [sp1])
+  | SSince (sp2, sp1s) -> SSince (sp2, hsnoc sp1s sp1)
   | SUntil (sp2, sp1s) -> SUntil (sp2, hcons sp1 sp1s)
   | _ -> failwith "Bad arguments for sappend"
 
 let vappend vp vp2 = match vp with
-  | VSince (tp, vp1, vp2s) -> VSince (tp,  vp1, List.append vp2s [vp2])
+  | VSince (tp, vp1, vp2s) -> VSince (tp,  vp1, hsnoc vp2s vp2)
   | VSinceInf (tp, etp, vp2s) -> VSinceInf (tp, etp, List.append vp2s [vp2])
   | VUntil (tp, vp1, vp2s) -> VUntil (tp, vp1, vp2 :: vp2s)
   | VUntilInf (tp, ltp, vp2s) -> VUntilInf (tp, ltp, vp2 :: vp2s)
