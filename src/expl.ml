@@ -85,6 +85,9 @@ let hlist_hashcons =
     | _ -> false in
   Hashcons.hashcons hash equal m1
 
+let hnil = hlist_hashcons HNil
+let hcons (x: 'a hash_consed) (xs: 'a hlist) = hlist_hashcons (HCons (x, xs))
+
 let s_hash = function
   | STT i -> Hashtbl.hash (2, i)
   | SAtom (i, x) -> Hashtbl.hash (3, i, x)
@@ -187,9 +190,6 @@ let v_hashcons =
     | VUntil (i, p1, p2s), VUntil (i', p1', p2s') -> i = i' && p1 == p1' && p2s == p2s'
     | _ -> false in
   Hashcons.hashcons v_hash v_equal m3
-
-let hnil = hlist_hashcons HNil
-let hcons x xs = hlist_hashcons (HCons (x, xs))
 
 let stt i = s_hashcons (STT i)
 let satom (i, x) = s_hashcons (SAtom (i, x))
