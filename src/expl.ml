@@ -297,40 +297,25 @@ let rec shmap f hl = match hl.node with
   | HNil -> []
   | HCons (a1, tl) ->
      let r1 = f a1 in
-     match tl.node with
-     | HNil -> [r1]
-     | HCons (a2, tl') ->
-        let r2 = f a2 in
-        match tl'.node with
-        | HNil -> [r1;r2]
-        | HCons (a2, tl'') ->
-           r1 :: r2 :: (shmap f tl'')
-
-let rec shmap_hcons f hl = match hl.node with
-  | HNil -> shnil
-  | HCons (a1, tl) ->
-     let r1 = f a1.node in
-     match tl.node with
-     | HNil -> shcons r1 shnil
-     | HCons (a2, tl') ->
-        let r2 = f a2.node in
-        match tl'.node with
-        | HNil -> shcons r1 (shcons r2 shnil)
-        | HCons (a2, tl'') ->
-           shcons r1 (shcons r2 (shmap_hcons f tl''))
+     r1 :: (shmap f tl)
 
 let rec vhmap f hl = match hl.node with
+  | HNil -> []
+  | HCons (a1, tl) ->
+     let r1 = f a1 in
+     r1 :: (vhmap f tl)
+
+let rec shmap_sexpl f hl = match hl.node with
+  | HNil -> shnil
+  | HCons (a1, tl) ->
+     let r1 = f a1 in
+     shcons r1 (shmap_sexpl f tl)
+
+let rec vhmap_vexpl f hl = match hl.node with
   | HNil -> vhnil
   | HCons (a1, tl) ->
-     let r1 = f a1.node in
-     match tl.node with
-     | HNil -> vhcons r1 vhnil
-     | HCons (a2, tl') ->
-        let r2 = f a2.node in
-        match tl'.node with
-        | HNil -> vhcons r1 (vhcons r2 vhnil)
-        | HCons (a2, tl'') ->
-           vhcons r1 (vhcons r2 (vhmap f tl''))
+     let r1 = f a1 in
+     vhcons r1 (vhmap_vexpl f tl)
 
 let rec shsnoc (hl: sexpl_ hlist) a = match hl.node with
   | HNil -> shcons a shnil
@@ -390,28 +375,28 @@ let expl_to_bool = function
   | S _ -> true
   | V _ -> false
 
-let sappend sp sp1 = match sp with
-  | SSince (sp2, sp1s) -> SSince (sp2, shsnoc sp1s sp1)
-  | SUntil (sp2, sp1s) -> SUntil (sp2, shcons sp1 sp1s)
+let sappend sp sp1 = match sp.node with
+  | SSince (sp2, sp1s) -> ssince (sp2, shsnoc sp1s sp1)
+  | SUntil (sp2, sp1s) -> suntil (sp2, shcons sp1 sp1s)
   | _ -> failwith "Bad arguments for sappend"
 
-let vappend vp vp2 = match vp with
-  | VSince (tp, vp1, vp2s) -> VSince (tp,  vp1, vhsnoc vp2s vp2)
-  | VSinceInf (tp, etp, vp2s) -> VSinceInf (tp, etp, vhsnoc vp2s vp2)
-  | VUntil (tp, vp1, vp2s) -> VUntil (tp, vp1, vhcons vp2 vp2s)
-  | VUntilInf (tp, ltp, vp2s) -> VUntilInf (tp, ltp, vhcons vp2 vp2s)
+let vappend vp vp2 = match vp.node with
+  | VSince (tp, vp1, vp2s) -> vsince (tp,  vp1, vhsnoc vp2s vp2)
+  | VSinceInf (tp, etp, vp2s) -> vsinceinf (tp, etp, vhsnoc vp2s vp2)
+  | VUntil (tp, vp1, vp2s) -> vuntil (tp, vp1, vhcons vp2 vp2s)
+  | VUntilInf (tp, ltp, vp2s) -> vuntilinf (tp, ltp, vhcons vp2 vp2s)
   | _ -> failwith "Bad arguments for vappend"
 
-let sdrop sp = match sp with
+let sdrop sp = match sp.node with
   | SUntil (_, sp1s) when is_hnil sp1s -> None
-  | SUntil (sp2, sp1s) -> Some (SUntil (sp2, htail sp1s))
+  | SUntil (sp2, sp1s) -> Some (suntil (sp2, htail sp1s))
   | _ -> failwith "Bad arguments for sdrop"
 
-let vdrop vp = match vp with
+let vdrop vp = match vp.node with
   | VUntil (_, _, vp2s) when is_hcons_hnil vp2s -> None
-  | VUntil (tp, vp1, vp2s) -> Some (VUntil (tp, vp1, htail vp2s))
+  | VUntil (tp, vp1, vp2s) -> Some (vuntil (tp, vp1, htail vp2s))
   | VUntilInf (_, _, vp2s) when is_hnil vp2s -> None
-  | VUntilInf (tp, ltp, vp2s) -> Some (VUntilInf (tp, ltp, htail vp2s))
+  | VUntilInf (tp, ltp, vp2s) -> Some (vuntilinf (tp, ltp, htail vp2s))
   | _ -> failwith "Bad arguments for vdrop"
 
 let (s_at, v_at) =
@@ -469,11 +454,11 @@ let (s_at, v_at) =
                  | VUntil (i, _, _) -> i
                  | VUntilInf (i, _, _) -> i))
 
-let s_ltp sp = match sp with
+let s_ltp sp = match sp.node with
   | SUntil (sp2, _) -> s_at sp2
   | _ -> failwith "Bad arguments for s_ltp"
 
-let v_etp vp = match vp with
+let v_etp vp = match vp.node with
   | VUntil (i, _, vp2s) when is_hnil vp2s -> i
   | VUntil (_, _, vp2s) -> v_at (hhead vp2s)
   | _ -> failwith "Bad arguments for v_etp"
