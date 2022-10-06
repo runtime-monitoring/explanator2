@@ -50,160 +50,163 @@ let rec update_atoms_table tbl idx f sap tp atoms =
   | Next (_, f') -> update_atoms_table tbl idx f' sap tp atoms
 
 let rec update_expl_table tbl idx f p =
-  match f, p with
-  | TT, S (STT i) ->
-     let cell = (p_at p, idx, None, true) in
-     ((cell, []) :: tbl, idx)
-  | P s1, S (SAtom (i, s2)) ->
-     let cell = (p_at p, idx, None, true) in
-     ((cell, []) :: tbl, idx)
-  | Neg f', S (SNeg vp) ->
-     let vp_idx = idx+1 in
-     let (tbl', idx') = update_expl_table tbl vp_idx f' (V vp) in
-     let cell = (p_at p, idx, None, true) in
-     let cells = [(v_at vp, vp_idx, None, false)] in
-     ((cell, cells) :: tbl', idx')
-  | Disj (f1, _), S (SDisjL sp1) ->
-     let sp1_idx = idx+1 in
-     let (tbl', idx') = update_expl_table tbl sp1_idx f1 (S sp1) in
-     let cell = (p_at p, idx, None, true) in
-     let cells = [(s_at sp1, sp1_idx, None, true)] in
-     ((cell, cells) :: tbl', idx')
-  | Disj (f1, f2), S (SDisjR sp2) ->
-     let sp1_idx = idx+1 in
-     let sp2_idx = (f_idx sp1_idx f1)+1 in
-     let (tbl', idx') = update_expl_table tbl sp2_idx f2 (S sp2) in
-     let cell = (p_at p, idx, None, true) in
-     let cells = [(s_at sp2, sp2_idx, None, true)] in
-     ((cell, cells) :: tbl', idx')
-  | Conj (f1, f2), S (SConj (sp1, sp2)) ->
-     let sp1_idx = idx+1 in
-     let (tbl', idx') = update_expl_table tbl sp1_idx f1 (S sp1) in
-     let sp2_idx = idx'+1 in
-     let (tbl'', idx'') = update_expl_table tbl' sp2_idx f2 (S sp2) in
-     let cell = (p_at p, idx, None, true) in
-     let cells = [(s_at sp1, sp1_idx, None, true); (s_at sp2, sp2_idx, None, true)] in
-     ((cell, cells) :: tbl'', idx'')
-  | Prev (i, f'), S (SPrev sp)
-  | Next (i, f'), S (SNext sp) ->
-     let sp_idx = idx+1 in
-     let (tbl', idx') = update_expl_table tbl sp_idx f' (S sp) in
-     let cell = match f with Prev _ -> (p_at p, idx, Some(i, PAST), true)
-                           | Next _ -> (p_at p, idx, Some(i, FUTURE), true)
-                           | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Next or Prev") in
-     let cells = [(s_at sp, sp_idx, None, true)] in
-     ((cell, cells) :: tbl', idx')
-  | Since (i, f1, f2), S (SSince (sp2, []))
-  | Until (i, f1, f2), S (SUntil (sp2, [])) ->
-     let sp1_idx = idx+1 in
-     (* Recursive calls *)
-     let sp2_idx = (f_idx sp1_idx f1)+1 in
-     let (tbl', idx') = update_expl_table tbl sp2_idx f2 (S sp2) in
-     (* State update *)
-     let cell = match f with Since _ -> (p_at p, idx, Some(i, PAST), true)
-                           | Until _ -> (p_at p, idx, Some(i, FUTURE), true)
-                           | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Since or Until") in
-     let cells = [(s_at sp2, sp2_idx, None, true)] in
-     ((cell, cells) :: tbl', idx')
-  | Since (i, f1, f2), S (SSince (sp2, sp1s))
-  | Until (i, f1, f2), S (SUntil (sp2, sp1s)) ->
-     let sp1_idx = idx+1 in
-     (* Recursive calls *)
-     let (tbl', idx') = List.fold sp1s ~init:(tbl, sp1_idx)
-                          ~f:(fun (t, _) sp1 -> update_expl_table t sp1_idx f1 (S sp1)) in
-     let sp2_idx = idx'+1 in
-     let (tbl'', idx'') = update_expl_table tbl' sp2_idx f2 (S sp2) in
-     (* State update *)
-     let cell = match f with Since _ -> (p_at p, idx, Some(i, PAST), true)
-                           | Until _ -> (p_at p, idx, Some(i, FUTURE), true)
-                           | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Since or Until") in
-     let cells = (s_at sp2, sp2_idx, None, true) ::
-                   (List.map sp1s ~f:(fun sp1 -> (s_at sp1, sp1_idx, None, true))) in
-     ((cell, cells) :: tbl'', idx'')
-  | FF, V (VFF i) ->
-     let cell = (p_at p, idx, None, false) in
-     ((cell, []) :: tbl, idx)
-  | P s1, V (VAtom (i, s2)) ->
-     let cell = (p_at p, idx, None, false) in
-     ((cell, []) :: tbl, idx)
-  | Neg f', V (VNeg sp) ->
-     let sp_idx = idx+1 in
-     let (tbl', idx') = update_expl_table tbl sp_idx f' (S sp) in
-     let cell = (p_at p, idx, None, false) in
-     let cells = [(s_at sp, sp_idx, None, true)] in
-     ((cell, cells) :: tbl', idx')
-  | Disj (f1, f2), V (VDisj (vp1, vp2)) ->
-     let vp1_idx = idx+1 in
-     let (tbl', idx') = update_expl_table tbl vp1_idx f1 (V vp1) in
-     let vp2_idx = idx'+1 in
-     let (tbl'', idx'') = update_expl_table tbl' vp2_idx f2 (V vp2) in
-     let cell = (p_at p, idx, None, false) in
-     let cells = [(v_at vp1, vp1_idx, None, false); (v_at vp2, vp2_idx, None, false)] in
-     ((cell, cells) :: tbl'', idx'')
-  | Conj (f1, _), V (VConjL vp1) ->
-     let vp1_idx = idx+1 in
-     let (tbl', idx') = update_expl_table tbl vp1_idx f1 (V vp1) in
-     let cell = (p_at p, idx, None, false) in
-     let cells = [(v_at vp1, vp1_idx, None, false)] in
-     ((cell, cells) :: tbl', idx')
-  | Conj (f1, f2), V (VConjR vp2) ->
-     let vp1_idx = idx+1 in
-     let vp2_idx = (f_idx vp1_idx f1)+1 in
-     let (tbl', idx') = update_expl_table tbl vp2_idx f2 (V vp2) in
-     let cell = (p_at p, idx, None, false) in
-     let cells = [(v_at vp2, vp2_idx, None, false)] in
-     ((cell, cells) :: tbl', idx')
-  | Next (i, f'), V (VNext vp)
-  | Prev (i, f'), V (VPrev vp) ->
-     let vp_idx = idx+1 in
-     let (tbl', idx') = update_expl_table tbl vp_idx f' (V vp) in
-     let cell = match f with Prev _ -> (p_at p, idx, Some(i, PAST), false)
-                           | Next _ -> (p_at p, idx, Some(i, FUTURE), false)
-                           | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Next or Prev") in
-     let cells = [(v_at vp, vp_idx, None, false)] in
-     ((cell, cells) :: tbl', idx')
-  | Since (i, f1, _), V (VSince (_, vp1, []))
-  | Until (i, f1, _), V (VUntil (_, vp1, [])) ->
-     let vp1_idx = idx+1 in
-     let (tbl', idx') = update_expl_table tbl vp1_idx f1 (V vp1) in
-     let cell = match f with Since _ -> (p_at p, idx, Some(i, PAST), false)
-                           | Until _ -> (p_at p, idx, Some(i, FUTURE), false)
-                           | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Since or Until") in
-     let cells = [(v_at vp1, vp1_idx, None, false)] in
-     ((cell, cells) :: tbl', idx')
-  | Since (i, f1, f2), V (VSince (_, vp1, vp2s))
-  | Until (i, f1, f2), V (VUntil (_, vp1, vp2s)) ->
-     let vp1_idx = idx+1 in
-     let (tbl', idx') = update_expl_table tbl vp1_idx f1 (V vp1) in
-     let vp2_idx = idx'+1 in
-     let (tbl'', idx'') = List.fold vp2s ~init:(tbl', vp2_idx)
-                            ~f:(fun (t, _) vp2 -> update_expl_table t vp2_idx f2 (V vp2)) in
-     let cell = match f with Since _ -> (p_at p, idx, Some(i, PAST), false)
-                           | Until _ -> (p_at p, idx, Some(i, FUTURE), false)
-                           | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Since or Until") in
-     let cells = (v_at vp1, vp1_idx, None, false) ::
-                   (List.map vp2s ~f:(fun vp2 -> (v_at vp2, vp2_idx, None, false))) in
-     ((cell, cells) :: tbl'', idx'')
-  | Since (i, f1, f2), V (VSinceInf (_, _, vp2s))
-  | Until (i, f1, f2), V (VUntilInf (_, _, vp2s)) ->
-     let vp1_idx = idx+1 in
-     let vp2_idx = (f_idx vp1_idx f1)+1 in
-     let (tbl', idx') = List.fold vp2s ~init:(tbl, vp2_idx)
-                          ~f:(fun (t, _) vp2 -> update_expl_table t vp2_idx f2 (V vp2)) in
-     let cell = match f with Since _ -> (p_at p, idx, Some(i, PAST), false)
-                           | Until _ -> (p_at p, idx, Some(i, FUTURE), false)
-                           | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Since or Until") in
-     let cells = List.map vp2s ~f:(fun vp2 -> (v_at vp2, vp2_idx, None, false)) in
-     ((cell, cells) :: tbl', idx')
-  | Prev (_, _), V VPrev0
-  | Prev (_, _), V (VPrevOutL _)
-  | Prev (_, _), V (VPrevOutR _)
-  | Next (_, _), V (VNextOutL _)
-  | Next (_, _), V (VNextOutR _)
-  | Since (_, _, _), V (VSinceOutL _) ->
-     let cell = (p_at p, idx, None, false) in
-     ((cell, []) :: tbl, idx)
-  | _ -> raise (UNEXPECTED_PAIR "Explanator2 can't handle this pair of formula/proof.")
+  match p with
+  | S sp -> (match f, sp.node with
+             | TT, STT i ->
+                let cell = (p_at p, idx, None, true) in
+                ((cell, []) :: tbl, idx)
+             | P s1, SAtom (i, s2) ->
+                let cell = (p_at p, idx, None, true) in
+                ((cell, []) :: tbl, idx)
+             | Neg f', SNeg vp ->
+                let vp_idx = idx+1 in
+                let (tbl', idx') = update_expl_table tbl vp_idx f' (V vp) in
+                let cell = (p_at p, idx, None, true) in
+                let cells = [(v_at vp, vp_idx, None, false)] in
+                ((cell, cells) :: tbl', idx')
+             | Disj (f1, _), SDisjL sp1 ->
+                let sp1_idx = idx+1 in
+                let (tbl', idx') = update_expl_table tbl sp1_idx f1 (S sp1) in
+                let cell = (p_at p, idx, None, true) in
+                let cells = [(s_at sp1, sp1_idx, None, true)] in
+                ((cell, cells) :: tbl', idx')
+             | Disj (f1, f2), SDisjR sp2 ->
+                let sp1_idx = idx+1 in
+                let sp2_idx = (f_idx sp1_idx f1)+1 in
+                let (tbl', idx') = update_expl_table tbl sp2_idx f2 (S sp2) in
+                let cell = (p_at p, idx, None, true) in
+                let cells = [(s_at sp2, sp2_idx, None, true)] in
+                ((cell, cells) :: tbl', idx')
+             | Conj (f1, f2), SConj (sp1, sp2) ->
+                let sp1_idx = idx+1 in
+                let (tbl', idx') = update_expl_table tbl sp1_idx f1 (S sp1) in
+                let sp2_idx = idx'+1 in
+                let (tbl'', idx'') = update_expl_table tbl' sp2_idx f2 (S sp2) in
+                let cell = (p_at p, idx, None, true) in
+                let cells = [(s_at sp1, sp1_idx, None, true); (s_at sp2, sp2_idx, None, true)] in
+                ((cell, cells) :: tbl'', idx'')
+             | Prev (i, f'), SPrev sp
+             | Next (i, f'), SNext sp ->
+                let sp_idx = idx+1 in
+                let (tbl', idx') = update_expl_table tbl sp_idx f' (S sp) in
+                let cell = match f with Prev _ -> (p_at p, idx, Some(i, PAST), true)
+                                      | Next _ -> (p_at p, idx, Some(i, FUTURE), true)
+                                      | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Next or Prev") in
+                let cells = [(s_at sp, sp_idx, None, true)] in
+                ((cell, cells) :: tbl', idx')
+             | Since (i, f1, f2), SSince (sp2, sp1s)
+             | Until (i, f1, f2), SUntil (sp2, sp1s) when (is_hnil sp1s) ->
+                let sp1_idx = idx+1 in
+                (* Recursive calls *)
+                let sp2_idx = (f_idx sp1_idx f1)+1 in
+                let (tbl', idx') = update_expl_table tbl sp2_idx f2 (S sp2) in
+                (* State update *)
+                let cell = match f with Since _ -> (p_at p, idx, Some(i, PAST), true)
+                                      | Until _ -> (p_at p, idx, Some(i, FUTURE), true)
+                                      | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Since or Until") in
+                let cells = [(s_at sp2, sp2_idx, None, true)] in
+                ((cell, cells) :: tbl', idx')
+             | Since (i, f1, f2), SSince (sp2, sp1s)
+             | Until (i, f1, f2), SUntil (sp2, sp1s) ->
+                let sp1_idx = idx+1 in
+                (* Recursive calls *)
+                let (tbl', idx') = hfold_left (fun (t, _) sp1 -> update_expl_table t sp1_idx f1 (S sp1))
+                                     (tbl, sp1_idx) sp1s in
+                let sp2_idx = idx'+1 in
+                let (tbl'', idx'') = update_expl_table tbl' sp2_idx f2 (S sp2) in
+                (* State update *)
+                let cell = match f with Since _ -> (p_at p, idx, Some(i, PAST), true)
+                                      | Until _ -> (p_at p, idx, Some(i, FUTURE), true)
+                                      | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Since or Until") in
+                let cells = (s_at sp2, sp2_idx, None, true) ::
+                              (shmap (fun sp1 -> (s_at sp1, sp1_idx, None, true)) sp1s) in
+                ((cell, cells) :: tbl'', idx'')
+             | _ -> raise (UNEXPECTED_PAIR "Explanator2 can't handle this pair of formula/proof."))
+  | V vp -> (match f, vp.node with
+             | FF, VFF i ->
+                let cell = (p_at p, idx, None, false) in
+                ((cell, []) :: tbl, idx)
+             | P s1, VAtom (i, s2) ->
+                let cell = (p_at p, idx, None, false) in
+                ((cell, []) :: tbl, idx)
+             | Neg f', VNeg sp ->
+                let sp_idx = idx+1 in
+                let (tbl', idx') = update_expl_table tbl sp_idx f' (S sp) in
+                let cell = (p_at p, idx, None, false) in
+                let cells = [(s_at sp, sp_idx, None, true)] in
+                ((cell, cells) :: tbl', idx')
+             | Disj (f1, f2), VDisj (vp1, vp2) ->
+                let vp1_idx = idx+1 in
+                let (tbl', idx') = update_expl_table tbl vp1_idx f1 (V vp1) in
+                let vp2_idx = idx'+1 in
+                let (tbl'', idx'') = update_expl_table tbl' vp2_idx f2 (V vp2) in
+                let cell = (p_at p, idx, None, false) in
+                let cells = [(v_at vp1, vp1_idx, None, false); (v_at vp2, vp2_idx, None, false)] in
+                ((cell, cells) :: tbl'', idx'')
+             | Conj (f1, _), VConjL vp1 ->
+                let vp1_idx = idx+1 in
+                let (tbl', idx') = update_expl_table tbl vp1_idx f1 (V vp1) in
+                let cell = (p_at p, idx, None, false) in
+                let cells = [(v_at vp1, vp1_idx, None, false)] in
+                ((cell, cells) :: tbl', idx')
+             | Conj (f1, f2), VConjR vp2 ->
+                let vp1_idx = idx+1 in
+                let vp2_idx = (f_idx vp1_idx f1)+1 in
+                let (tbl', idx') = update_expl_table tbl vp2_idx f2 (V vp2) in
+                let cell = (p_at p, idx, None, false) in
+                let cells = [(v_at vp2, vp2_idx, None, false)] in
+                ((cell, cells) :: tbl', idx')
+             | Next (i, f'), VNext vp
+             | Prev (i, f'), VPrev vp ->
+                let vp_idx = idx+1 in
+                let (tbl', idx') = update_expl_table tbl vp_idx f' (V vp) in
+                let cell = match f with Prev _ -> (p_at p, idx, Some(i, PAST), false)
+                                      | Next _ -> (p_at p, idx, Some(i, FUTURE), false)
+                                      | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Next or Prev") in
+                let cells = [(v_at vp, vp_idx, None, false)] in
+                ((cell, cells) :: tbl', idx')
+             | Since (i, f1, _), VSince (_, vp1, vp2s)
+             | Until (i, f1, _), VUntil (_, vp1, vp2s) when is_hnil vp2s ->
+                let vp1_idx = idx+1 in
+                let (tbl', idx') = update_expl_table tbl vp1_idx f1 (V vp1) in
+                let cell = match f with Since _ -> (p_at p, idx, Some(i, PAST), false)
+                                      | Until _ -> (p_at p, idx, Some(i, FUTURE), false)
+                                      | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Since or Until") in
+                let cells = [(v_at vp1, vp1_idx, None, false)] in
+                ((cell, cells) :: tbl', idx')
+             | Since (i, f1, f2), VSince (_, vp1, vp2s)
+             | Until (i, f1, f2), VUntil (_, vp1, vp2s) ->
+                let vp1_idx = idx+1 in
+                let (tbl', idx') = update_expl_table tbl vp1_idx f1 (V vp1) in
+                let vp2_idx = idx'+1 in
+                let (tbl'', idx'') = hfold_left (fun (t, _) vp2 -> update_expl_table t vp2_idx f2 (V vp2))
+                                       (tbl', vp2_idx) vp2s in
+                let cell = match f with Since _ -> (p_at p, idx, Some(i, PAST), false)
+                                      | Until _ -> (p_at p, idx, Some(i, FUTURE), false)
+                                      | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Since or Until") in
+                let cells = (v_at vp1, vp1_idx, None, false) ::
+                              (shmap (fun vp2 -> (v_at vp2, vp2_idx, None, false)) vp2s) in
+                ((cell, cells) :: tbl'', idx'')
+             | Since (i, f1, f2), VSinceInf (_, _, vp2s)
+             | Until (i, f1, f2), VUntilInf (_, _, vp2s) ->
+                let vp1_idx = idx+1 in
+                let vp2_idx = (f_idx vp1_idx f1)+1 in
+                let (tbl', idx') = hfold_left (fun (t, _) vp2 -> update_expl_table t vp2_idx f2 (V vp2))
+                                     (tbl, vp2_idx) vp2s in
+                let cell = match f with Since _ -> (p_at p, idx, Some(i, PAST), false)
+                                      | Until _ -> (p_at p, idx, Some(i, FUTURE), false)
+                                      | _ -> raise (UNEXPECTED_FORMULA "Formula must be either Since or Until") in
+                let cells = shmap (fun vp2 -> (v_at vp2, vp2_idx, None, false)) vp2s in
+                ((cell, cells) :: tbl', idx')
+             | Prev (_, _), VPrev0
+             | Prev (_, _), VPrevOutL _
+             | Prev (_, _), VPrevOutR _
+             | Next (_, _), VNextOutL _
+             | Next (_, _), VNextOutR _
+             | Since (_, _, _), VSinceOutL _ ->
+                let cell = (p_at p, idx, None, false) in
+                ((cell, []) :: tbl, idx)
+             | _ -> raise (UNEXPECTED_PAIR "Explanator2 can't handle this pair of formula/proof."))
 
 let cell_to_json (tp, col, i_opt, b) cells =
   let ident = "    " in

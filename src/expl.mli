@@ -8,7 +8,15 @@
 (*  Leonardo Lima (UCPH)                                           *)
 (*******************************************************************)
 
-type sexpl =
+open Hashcons
+
+type 'a hlist = ('a hlist_) hash_consed
+and 'a hlist_ =
+  | HNil
+  | HCons of 'a hash_consed * 'a hlist
+
+type sexpl = sexpl_ hash_consed
+and sexpl_ =
   | STT of int
   | SAtom of int * string
   | SNeg of vexpl
@@ -22,13 +30,14 @@ type sexpl =
   | SPrev of sexpl
   | SNext of sexpl
   | SOnce of int * sexpl
-  | SHistorically of int * int * sexpl list
+  | SHistorically of int * int * sexpl_ hlist
   | SHistoricallyOutL of int
   | SEventually of int * sexpl
-  | SAlways of int * int * sexpl list
-  | SSince of sexpl * sexpl list
-  | SUntil of sexpl * sexpl list
-and vexpl =
+  | SAlways of int * int * sexpl_ hlist
+  | SSince of sexpl * sexpl_ hlist
+  | SUntil of sexpl * sexpl_ hlist
+and vexpl = vexpl_ hash_consed
+and vexpl_ =
   | VFF of int
   | VAtom of int * string
   | VNeg of sexpl
@@ -46,20 +55,25 @@ and vexpl =
   | VNextOutR of int
   | VNext of vexpl
   | VOnceOutL of int
-  | VOnce of int * int * vexpl list
+  | VOnce of int * int * vexpl_ hlist
   | VHistorically of int * vexpl
-  | VEventually of int * int * vexpl list
+  | VEventually of int * int * vexpl_ hlist
   | VAlways of int * vexpl
-  | VSince of int * vexpl * vexpl list
-  | VSinceInf of int * int * vexpl list
+  | VSince of int * vexpl * vexpl_ hlist
+  | VSinceInf of int * int * vexpl_ hlist
   | VSinceOutL of int
-  | VUntil of int * vexpl * vexpl list
-  | VUntilInf of int * int * vexpl list
+  | VUntil of int * vexpl * vexpl_ hlist
+  | VUntilInf of int * int * vexpl_ hlist
 
 type expl = S of sexpl | V of vexpl
 
 exception VEXPL
 exception SEXPL
+
+val is_hnil: 'a hlist -> bool
+val hfold_left: ('a -> 'b hash_consed -> 'a) -> 'a -> 'b hlist -> 'a
+val shmap: ('a hash_consed -> 'b) -> 'a hlist -> 'b list
+val hlist_list: 'a hlist -> 'a list
 
 val unS: expl -> sexpl
 val unV: expl -> vexpl
