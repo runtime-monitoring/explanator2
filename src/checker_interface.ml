@@ -18,8 +18,8 @@ type checker_proof = CS of string sproof | CV of string vproof
 type checker_trace = (string set * nat) list
 type trace_t = (SS.t * int) list
 
-let rec convert_sp sp =
-  match sp with
+let rec convert_sp (sp: sexpl) =
+  match sp.node with
   | SAtom (tp, s) -> let tp_nat = nat_of_integer (of_int tp) in
                      SAtm (s, tp_nat)
   | STT tp -> let tp_nat = nat_of_integer (of_int tp) in
@@ -38,8 +38,7 @@ let rec convert_sp sp =
                        SOnce (tp_nat, convert_sp sp1)
   | SHistorically (tp, etp, sp2s) -> let tp_nat = nat_of_integer (of_int tp) in
                                      let etp_nat = nat_of_integer (of_int etp) in
-                                     let sp2s' = List.rev(List.fold_left (fun acc sp2 ->
-                                                              (convert_sp sp2)::acc) [] sp2s) in
+                                     let sp2s' = shmap (fun sp2 -> convert_sp sp2) sp2s in
                                      SHistorically (tp_nat, etp_nat, sp2s')
   | SHistoricallyOutL tp -> let tp_nat = nat_of_integer (of_int tp) in
                             SHistorically_le tp_nat
@@ -47,17 +46,14 @@ let rec convert_sp sp =
                              SEventually (tp_nat, convert_sp sp1)
   | SAlways (tp, ltp, sp2s) -> let tp_nat = nat_of_integer (of_int tp) in
                                let ltp_nat = nat_of_integer (of_int ltp) in
-                               let sp2s' = List.rev(List.fold_left (fun acc sp2 ->
-                                                        (convert_sp sp2)::acc) [] sp2s) in
+                               let sp2s' = shmap (fun sp2 -> convert_sp sp2) sp2s in
                                SAlways (tp_nat, ltp_nat, sp2s')
-  | SSince (sp2, sp1s) -> let sp1s' = List.rev(List.fold_left (fun acc sp1 ->
-                                                   (convert_sp sp1)::acc) [] sp1s) in
+  | SSince (sp2, sp1s) -> let sp1s' = shmap (fun sp1 -> convert_sp sp1) sp1s in
                           SSince (convert_sp sp2, sp1s')
-  | SUntil (sp2, sp1s) -> let sp1s' = List.rev(List.fold_left (fun acc sp1 ->
-                                                   (convert_sp sp1)::acc) [] sp1s) in
+  | SUntil (sp2, sp1s) -> let sp1s' = shmap (fun sp1 -> convert_sp sp1) sp1s in
                           SUntil (sp1s', convert_sp sp2)
-and convert_vp vp =
-  match vp with
+and convert_vp (vp: vexpl) =
+  match vp.node with
   | VAtom (tp, s) -> let tp_nat = nat_of_integer (of_int tp) in
                      VAtm (s, tp_nat)
   | VFF tp -> let tp_nat = nat_of_integer (of_int tp) in
@@ -84,35 +80,29 @@ and convert_vp vp =
                     VOnce_le tp_nat
   | VOnce (tp, etp, vp1s) -> let tp_nat = nat_of_integer (of_int tp) in
                              let etp_nat = nat_of_integer (of_int etp) in
-                             let vp1s' = List.rev(List.fold_left (fun acc vp1 ->
-                                                      (convert_vp vp1)::acc) [] vp1s) in
+                             let vp1s' = vhmap (fun vp1 -> convert_vp vp1) vp1s in
                              VOnce (tp_nat, etp_nat, vp1s')
   | VHistorically (tp, vp1) -> let tp_nat = nat_of_integer (of_int tp) in
                                VHistorically (tp_nat, convert_vp vp1)
   | VEventually (tp, ltp, vp1s) -> let tp_nat = nat_of_integer (of_int tp) in
                                    let ltp_nat = nat_of_integer (of_int ltp) in
-                                   let vp1s' = List.rev(List.fold_left (fun acc vp1 ->
-                                                            (convert_vp vp1)::acc) [] vp1s) in
+                                   let vp1s' = vhmap (fun vp1 -> convert_vp vp1) vp1s in
                                    VEventually (tp_nat, ltp_nat, vp1s')
   | VAlways (tp, vp1) -> let tp_nat = nat_of_integer (of_int tp) in
                          VAlways (tp_nat, convert_vp vp1)
   | VSince (tp, vp1, vp2s) -> let tp_nat = nat_of_integer (of_int tp) in
-                              let vp2s' = List.rev(List.fold_left (fun acc vp2 ->
-                                                       (convert_vp vp2)::acc) [] vp2s) in
+                              let vp2s' = vhmap (fun vp2 -> convert_vp vp2) vp2s in
                               VSince (tp_nat, convert_vp vp1, vp2s')
   | VUntil (tp, vp1, vp2s) -> let tp_nat = nat_of_integer (of_int tp) in
-                              let vp2s' = List.rev(List.fold_left (fun acc vp2 ->
-                                                       (convert_vp vp2)::acc) [] vp2s) in
+                              let vp2s' = vhmap (fun vp2 -> convert_vp vp2) vp2s in
                               VUntil (tp_nat, vp2s', convert_vp vp1)
   | VSinceInf (tp, etp, vp2s) -> let tp_nat = nat_of_integer (of_int tp) in
                                  let etp_nat = nat_of_integer (of_int etp) in
-                                 let vp2s' = List.rev(List.fold_left (fun acc vp2 ->
-                                                          (convert_vp vp2)::acc) [] vp2s) in
+                                 let vp2s' = vhmap (fun vp2 -> convert_vp vp2) vp2s in
                                  VSince_never (tp_nat, etp_nat, vp2s')
   | VUntilInf (tp, ltp, vp2s) -> let tp_nat = nat_of_integer (of_int tp) in
                                  let ltp_nat = nat_of_integer (of_int ltp) in
-                                 let vp2s' = List.rev(List.fold_left (fun acc vp2 ->
-                                                          (convert_vp vp2)::acc) [] vp2s) in
+                                 let vp2s' = vhmap (fun vp2 -> convert_vp vp2) vp2s in
                                  VUntil_never (tp_nat, ltp_nat, vp2s')
   | VSinceOutL tp -> let tp_nat = nat_of_integer (of_int tp) in
                      VSince_le tp_nat
