@@ -252,6 +252,14 @@ let vsinceoutl i = v_hashcons (VSinceOutL i)
 let vuntil (i, p1, p2s) = v_hashcons (VUntil (i, p1, p2s))
 let vuntilinf (i, hi, p2s) = v_hashcons (VUntilInf (i, hi, p2s))
 
+let memo f =
+  let t = ref Hmap.empty in
+  fun p ->
+    try Hmap.find p !t
+    with Not_found ->
+      let z = f p in
+      t := Hmap.add p z !t; z
+
 let memo_rec f =
   let t1 = ref Hmap.empty in
   let t2 = ref Hmap.empty in
@@ -399,64 +407,123 @@ let vdrop vp = match vp.node with
   | VUntilInf (tp, ltp, vp2s) -> Some (vuntilinf (tp, ltp, htail vp2s))
   | _ -> failwith "Bad arguments for vdrop"
 
-let (s_at, v_at) =
-  memo_rec (fun s_at v_at p ->
-      match p with
-      | S sp -> (match sp.node with
-                 | STT i -> i
-                 | SAtom (i, _) -> i
-                 | SNeg vphi -> v_at vphi
-                 | SDisjL sphi -> s_at sphi
-                 | SDisjR spsi -> s_at spsi
-                 | SConj (sphi, _) -> s_at sphi
-                 | SImplL vphi -> v_at vphi
-                 | SImplR spsi -> s_at spsi
-                 | SIffSS (sphi, _) -> s_at sphi
-                 | SIffVV (vphi, _) -> v_at vphi
-                 | SPrev sphi -> s_at sphi + 1
-                 | SNext sphi -> s_at sphi - 1
-                 | SOnce (i, _) -> i
-                 | SHistorically (i, _, _) -> i
-                 | SHistoricallyOutL i -> i
-                 | SEventually (i, _) -> i
-                 | SAlways (i, _, _) -> i
-                 | SSince (spsi, sphis) -> (match sphis.node with
-                                            | HNil -> s_at spsi
-                                            | HCons _ -> s_at (hlast sphis))
-                 | SUntil (spsi, sphis) -> (match sphis.node with
-                                            | HNil -> s_at spsi
-                                            | HCons (x, _) -> s_at x))
-      | V vp -> (match vp.node with
-                 | VFF i -> i
-                 | VAtom (i, _) -> i
-                 | VNeg sphi -> s_at sphi
-                 | VDisj (vphi, _) -> v_at vphi
-                 | VConjL vphi -> v_at vphi
-                 | VConjR vpsi -> v_at vpsi
-                 | VImpl (sphi, _) -> s_at sphi
-                 | VIffSV (sphi, _) -> s_at sphi
-                 | VIffVS (vphi, _) -> v_at vphi
-                 | VPrev0 -> 0
-                 | VPrevOutL i -> i
-                 | VPrevOutR i -> i
-                 | VPrev vphi -> v_at vphi + 1
-                 | VNextOutL i -> i
-                 | VNextOutR i -> i
-                 | VNext vphi -> v_at vphi - 1
-                 | VOnceOutL i -> i
-                 | VOnce (i, _, _) -> i
-                 | VHistorically (i, _) -> i
-                 | VEventually (i, _, _) -> i
-                 | VAlways (i, _) -> i
-                 | VSince (i, _, _) -> i
-                 | VSinceInf (i, _, _) -> i
-                 | VSinceOutL i -> i
-                 | VUntil (i, _, _) -> i
-                 | VUntilInf (i, _, _) -> i))
+(* let (s_at, v_at) = *)
+(*   memo_rec (fun s_at v_at p -> *)
+(*       match p with *)
+(*       | S sp -> (match sp.node with *)
+(*                  | STT i -> i *)
+(*                  | SAtom (i, _) -> i *)
+(*                  | SNeg vphi -> v_at vphi *)
+(*                  | SDisjL sphi -> s_at sphi *)
+(*                  | SDisjR spsi -> s_at spsi *)
+(*                  | SConj (sphi, _) -> s_at sphi *)
+(*                  | SImplL vphi -> v_at vphi *)
+(*                  | SImplR spsi -> s_at spsi *)
+(*                  | SIffSS (sphi, _) -> s_at sphi *)
+(*                  | SIffVV (vphi, _) -> v_at vphi *)
+(*                  | SPrev sphi -> s_at sphi + 1 *)
+(*                  | SNext sphi -> s_at sphi - 1 *)
+(*                  | SOnce (i, _) -> i *)
+(*                  | SHistorically (i, _, _) -> i *)
+(*                  | SHistoricallyOutL i -> i *)
+(*                  | SEventually (i, _) -> i *)
+(*                  | SAlways (i, _, _) -> i *)
+(*                  | SSince (spsi, sphis) -> (match sphis.node with *)
+(*                                             | HNil -> s_at spsi *)
+(*                                             | HCons _ -> s_at (hlast sphis)) *)
+(*                  | SUntil (spsi, sphis) -> (match sphis.node with *)
+(*                                             | HNil -> s_at spsi *)
+(*                                             | HCons (x, _) -> s_at x)) *)
+(*       | V vp -> (match vp.node with *)
+(*                  | VFF i -> i *)
+(*                  | VAtom (i, _) -> i *)
+(*                  | VNeg sphi -> s_at sphi *)
+(*                  | VDisj (vphi, _) -> v_at vphi *)
+(*                  | VConjL vphi -> v_at vphi *)
+(*                  | VConjR vpsi -> v_at vpsi *)
+(*                  | VImpl (sphi, _) -> s_at sphi *)
+(*                  | VIffSV (sphi, _) -> s_at sphi *)
+(*                  | VIffVS (vphi, _) -> v_at vphi *)
+(*                  | VPrev0 -> 0 *)
+(*                  | VPrevOutL i -> i *)
+(*                  | VPrevOutR i -> i *)
+(*                  | VPrev vphi -> v_at vphi + 1 *)
+(*                  | VNextOutL i -> i *)
+(*                  | VNextOutR i -> i *)
+(*                  | VNext vphi -> v_at vphi - 1 *)
+(*                  | VOnceOutL i -> i *)
+(*                  | VOnce (i, _, _) -> i *)
+(*                  | VHistorically (i, _) -> i *)
+(*                  | VEventually (i, _, _) -> i *)
+(*                  | VAlways (i, _) -> i *)
+(*                  | VSince (i, _, _) -> i *)
+(*                  | VSinceInf (i, _, _) -> i *)
+(*                  | VSinceOutL i -> i *)
+(*                  | VUntil (i, _, _) -> i *)
+(*                  | VUntilInf (i, _, _) -> i)) *)
+
+let rec s_at sp =
+  match sp.node with
+  | STT i -> i
+  | SAtom (i, _) -> i
+  | SNeg vphi -> v_at vphi
+  | SDisjL sphi -> s_at sphi
+  | SDisjR spsi -> s_at spsi
+  | SConj (sphi, _) -> s_at sphi
+  | SImplL vphi -> v_at vphi
+  | SImplR spsi -> s_at spsi
+  | SIffSS (sphi, _) -> s_at sphi
+  | SIffVV (vphi, _) -> v_at vphi
+  | SPrev sphi -> s_at sphi + 1
+  | SNext sphi -> s_at sphi - 1
+  | SOnce (i, _) -> i
+  | SHistorically (i, _, _) -> i
+  | SHistoricallyOutL i -> i
+  | SEventually (i, _) -> i
+  | SAlways (i, _, _) -> i
+  | SSince (spsi, sphis) -> (match sphis.node with
+                             | HNil -> s_at spsi
+                             | HCons _ -> s_at (hlast sphis))
+  | SUntil (spsi, sphis) -> (match sphis.node with
+                             | HNil -> s_at spsi
+                             | HCons (x, _) -> s_at x)
+and v_at vp =
+  match vp.node with
+  | VFF i -> i
+  | VAtom (i, _) -> i
+  | VNeg sphi -> s_at sphi
+  | VDisj (vphi, _) -> v_at vphi
+  | VConjL vphi -> v_at vphi
+  | VConjR vpsi -> v_at vpsi
+  | VImpl (sphi, _) -> s_at sphi
+  | VIffSV (sphi, _) -> s_at sphi
+  | VIffVS (vphi, _) -> v_at vphi
+  | VPrev0 -> 0
+  | VPrevOutL i -> i
+  | VPrevOutR i -> i
+  | VPrev vphi -> v_at vphi + 1
+  | VNextOutL i -> i
+  | VNextOutR i -> i
+  | VNext vphi -> v_at vphi - 1
+  | VOnceOutL i -> i
+  | VOnce (i, _, _) -> i
+  | VHistorically (i, _) -> i
+  | VEventually (i, _, _) -> i
+  | VAlways (i, _) -> i
+  | VSince (i, _, _) -> i
+  | VSinceInf (i, _, _) -> i
+  | VSinceOutL i -> i
+  | VUntil (i, _, _) -> i
+  | VUntilInf (i, _, _) -> i
 
 let s_ltp sp = match sp.node with
   | SUntil (sp2, _) -> s_at sp2
   | _ -> failwith "Bad arguments for s_ltp"
+
+(* let v_etp = memo (fun vp -> match vp.node with *)
+(*   | VUntil (i, _, vp2s) when is_hnil vp2s -> i *)
+(*   | VUntil (_, _, vp2s) -> v_at (hhead vp2s) *)
+(*   | _ -> failwith "Bad arguments for v_etp") *)
 
 let v_etp vp = match vp.node with
   | VUntil (i, _, vp2s) when is_hnil vp2s -> i
