@@ -10,53 +10,55 @@
 
 open Util
 
+type aux = int * int
+
 type sexpl =
-  | STT of int
-  | SAtom of int * string
-  | SNeg of vexpl
-  | SDisjL of sexpl
-  | SDisjR of sexpl
-  | SConj of sexpl * sexpl
-  | SImplL of vexpl
-  | SImplR of sexpl
-  | SIffSS of sexpl * sexpl
-  | SIffVV of vexpl * vexpl
-  | SPrev of sexpl
-  | SNext of sexpl
-  | SOnce of int * sexpl
-  | SHistorically of int * int * sexpl list
-  | SHistoricallyOutL of int
-  | SEventually of int * sexpl
-  | SAlways of int * int * sexpl list
-  | SSince of sexpl * sexpl list
-  | SUntil of sexpl * sexpl list
+  | STT               of aux
+  | SAtom             of aux * string
+  | SNeg              of aux * vexpl
+  | SDisjL            of aux * sexpl
+  | SDisjR            of aux * sexpl
+  | SConj             of aux * sexpl * sexpl
+  | SImplL            of aux * vexpl
+  | SImplR            of aux * sexpl
+  | SIffSS            of aux * sexpl * sexpl
+  | SIffVV            of aux * vexpl * vexpl
+  | SPrev             of aux * sexpl
+  | SNext             of aux * sexpl
+  | SOnce             of aux * sexpl
+  | SHistorically     of aux * int * sexpl list
+  | SHistoricallyOutL of aux
+  | SEventually       of aux * sexpl
+  | SAlways           of aux * int * sexpl list
+  | SSince            of aux * sexpl * sexpl list
+  | SUntil            of aux * sexpl * sexpl list
 and vexpl =
-  | VFF of int
-  | VAtom of int * string
-  | VNeg of sexpl
-  | VDisj of vexpl * vexpl
-  | VConjL of vexpl
-  | VConjR of vexpl
-  | VImpl of sexpl * vexpl
-  | VIffSV of sexpl * vexpl
-  | VIffVS of vexpl * sexpl
-  | VPrev0
-  | VPrevOutL of int
-  | VPrevOutR of int
-  | VPrev of vexpl
-  | VNextOutL of int
-  | VNextOutR of int
-  | VNext of vexpl
-  | VOnceOutL of int
-  | VOnce of int * int * vexpl list
-  | VHistorically of int * vexpl
-  | VEventually of int * int * vexpl list
-  | VAlways of int * vexpl
-  | VSince of int * vexpl * vexpl list
-  | VSinceInf of int * int * vexpl list
-  | VSinceOutL of int
-  | VUntil of int * vexpl * vexpl list
-  | VUntilInf of int * int * vexpl list
+  | VFF               of aux
+  | VAtom             of aux * string
+  | VNeg              of aux * sexpl
+  | VDisj             of aux * vexpl * vexpl
+  | VConjL            of aux * vexpl
+  | VConjR            of aux * vexpl
+  | VImpl             of aux * sexpl * vexpl
+  | VIffSV            of aux * sexpl * vexpl
+  | VIffVS            of aux * vexpl * sexpl
+  | VPrev0            of aux
+  | VPrevOutL         of aux
+  | VPrevOutR         of aux
+  | VPrev             of aux * vexpl
+  | VNextOutL         of aux
+  | VNextOutR         of aux
+  | VNext             of aux * vexpl
+  | VOnceOutL         of aux
+  | VOnce             of aux * int * vexpl list
+  | VHistorically     of aux * vexpl
+  | VEventually       of aux * int * vexpl list
+  | VAlways           of aux * vexpl
+  | VSince            of aux * vexpl * vexpl list
+  | VSinceInf         of aux * int * vexpl list
+  | VSinceOutL        of aux
+  | VUntil            of aux * vexpl * vexpl list
+  | VUntilInf         of aux * int * vexpl list
 
 type expl = S of sexpl | V of vexpl
 
@@ -66,47 +68,84 @@ exception SEXPL
 let unS = function S p -> p | _ -> raise VEXPL
 let unV = function V p -> p | _ -> raise SEXPL
 
-let expl_to_bool = function
-  | S _ -> true
-  | V _ -> false
+(***********************************
+ *                                 *
+ * Measure: size                   *
+ *                                 *
+ ***********************************)
+let rec s_size = function
+  | STT _ -> 1
+  | SAtom _ -> 1
+  | SNeg (_, vphi) -> 1 + v_size vphi
+  | SDisjL (_, sphi) -> 1 + s_size sphi
+  | SDisjR (_, spsi) -> 1 + s_size spsi
+  | SConj (_, sphi, spsi) -> 1 + s_size sphi + s_size spsi
+  | SImplL (_, vphi) -> 1 + v_size vphi
+  | SImplR (_, spsi) -> 1 + s_size spsi
+  | SIffSS (_, sphi, spsi) -> 1 + s_size sphi + s_size spsi
+  | SIffVV (_, vphi, vpsi) -> 1 + v_size vphi + v_size vpsi
+  | SPrev (_, sphi) -> 1 + s_size sphi
+  | SNext (_, sphi) -> 1 + s_size sphi
+  | SOnce (_, sphi) -> 1 + s_size sphi
+  | SHistorically (_, _, sphis) -> 1 + sum s_size sphis
+  | SHistoricallyOutL _ -> 1
+  | SEventually (_, sphi) -> 1 + s_size sphi
+  | SAlways (_, _, sphis) -> 1 + sum s_size sphis
+  | SSince (_, spsi, sphis) -> 1 + s_size spsi + sum s_size sphis
+  | SUntil (_, spsi, sphis) -> 1 + s_size spsi + sum s_size sphis
+and v_size = function
+  | VFF _ -> 1
+  | VAtom (_, _) -> 1
+  | VNeg (_, sphi) -> 1 + s_size sphi
+  | VDisj (_, vphi, vpsi) -> 1 + v_size vphi + v_size vpsi
+  | VConjL (_, vphi) -> 1 + v_size vphi
+  | VConjR (_, vpsi) -> 1 + v_size vpsi
+  | VImpl (_, sphi, vpsi) -> 1 + s_size sphi + v_size vpsi
+  | VIffSV (_, sphi, vpsi) -> 1 + s_size sphi + v_size vpsi
+  | VIffVS (_, vphi, spsi) -> 1 + v_size vphi + s_size spsi
+  | VPrev0 _ -> 1
+  | VPrevOutL _ -> 1
+  | VPrevOutR _ -> 1
+  | VPrev (_, vphi) -> 1 + v_size vphi
+  | VNextOutL _ -> 1
+  | VNextOutR _ -> 1
+  | VNext (_, vphi) -> 1 + v_size vphi
+  | VOnceOutL _ -> 1
+  | VOnce (_, _, vphis) -> 1 + sum v_size vphis
+  | VHistorically (_, vphi) -> 1 + v_size vphi
+  | VEventually (_, _, vphis) -> 1 + sum v_size vphis
+  | VAlways (_, vphi) -> 1 + v_size vphi
+  | VSince (_, vphi, vpsis) -> 1 + v_size vphi + sum v_size vpsis
+  | VSinceInf (_, _, vpsis) -> 1 + sum v_size vpsis
+  | VSinceOutL _ -> 1
+  | VUntil (_, vphi, vpsis) -> 1 + v_size vphi + sum v_size vpsis
+  | VUntilInf (_, _, vpsis) -> 1 + sum v_size vpsis
 
-let sappend sp sp1 = match sp with
-  | SSince (sp2, sp1s) -> SSince (sp2, List.append sp1s [sp1])
-  | SUntil (sp2, sp1s) -> SUntil (sp2, sp1 :: sp1s)
-  | _ -> failwith "Bad arguments for sappend"
+let size = function
+  | S s_p -> s_size s_p
+  | V v_p -> v_size v_p
 
-let vappend vp vp2 = match vp with
-  | VSince (tp, vp1, vp2s) -> VSince (tp,  vp1, List.append vp2s [vp2])
-  | VSinceInf (tp, etp, vp2s) -> VSinceInf (tp, etp, List.append vp2s [vp2])
-  | VUntil (tp, vp1, vp2s) -> VUntil (tp, vp1, vp2 :: vp2s)
-  | VUntilInf (tp, ltp, vp2s) -> VUntilInf (tp, ltp, vp2 :: vp2s)
-  | _ -> failwith "Bad arguments for vappend"
+let size_le = mk_le size
 
-let sdrop sp = match sp with
-  | SUntil (_, []) -> None
-  | SUntil (sp2, sp1s) -> Some (SUntil (sp2, drop_front sp1s))
-  | _ -> failwith "Bad arguments for sdrop"
+let minsize a b = if size a <= size b then a else b
+let minsize_list = function
+  | [] -> failwith "empty list for minsize_list"
+  | x::xs -> List.fold_left minsize x xs
 
-let vdrop vp = match vp with
-  | VUntil (_, _, _::[]) -> None
-  | VUntil (tp, vp1, vp2s) -> Some (VUntil (tp, vp1, drop_front vp2s))
-  | VUntilInf (_, _, []) -> None
-  | VUntilInf (tp, ltp, vp2s) -> Some (VUntilInf (tp, ltp, drop_front vp2s))
-  | _ -> failwith "Bad arguments for vdrop"
-
+(* time-point calculation *)
 let rec s_at = function
-  | STT i -> i
-  | SAtom (i, _) -> i
-  | SNeg vphi -> v_at vphi
-  | SDisjL sphi -> s_at sphi
-  | SDisjR spsi -> s_at spsi
-  | SConj (sphi, _) -> s_at sphi
-  | SImplL vphi -> v_at vphi
-  | SImplR spsi -> s_at spsi
-  | SIffSS (sphi, _) -> s_at sphi
-  | SIffVV (vphi, _) -> v_at vphi
-  | SPrev sphi -> s_at sphi + 1
-  | SNext sphi -> s_at sphi - 1
+  | STT (_, i) -> i
+  | SAtom ((_, i), _) -> i
+  | SNeg (_, vphi) -> v_at vphi
+  | SDisjL (_, sphi) -> s_at sphi
+  | SDisjR (_, spsi) -> s_at spsi
+  | SConj (_, sphi, _) -> s_at sphi
+  | SImplL (_, vphi) -> v_at vphi
+  | SImplR (_, spsi) -> s_at spsi
+  | SIffSS (_, sphi, _) -> s_at sphi
+  | SIffVV (_, vphi, _) -> v_at vphi
+  | SPrev (_, sphi) -> s_at sphi + 1
+  | SNext (_, sphi) -> s_at sphi - 1
   | SOnce (i, _) -> i
   | SHistorically (i, _, _) -> i
   | SHistoricallyOutL i -> i
@@ -159,73 +198,82 @@ let p_at = function
 | S s_p -> s_at s_p
 | V v_p -> v_at v_p
 
+(* Smart constructors *)
+let stt i = STT (s_size (STT (0, i)), i)
+let satom (i, x) = SAtom ((i, s_size (SAtom ((0,0), x))), x)
+let sneg p = SNeg (s_size (SNeg (0, p)), p)
+let sdisjl p = SDisjL (s_size (SDisjL (0, p)), p)
+let sdisjr p = SDisjR (s_size (SDisjR (0, p)), p)
+let sconj (p1, p2) = SConj (s_size (SConj (0, p1, p2)), p1, p2)
+let simpll p = SImplL (s_size (SImplL (0, p)), p)
+let simplr p = SImplR (s_size (SImplR (0, p)), p)
+let siffss (p1, p2) = SIffSS (s_size (SIffSS (0, p1, p2)), p1, p2)
+let siffvv (p1, p2) = SIffVV (s_size (SIffVV (0, p1, p2)), p1, p2)
+let sprev p = SPrev (s_size (SPrev (0, p)), p)
+let snext p = SNext (s_size (SNext (0, p)), p)
+let sonce (i, p) = SOnce (s_size (SOnce (0, i, p)), i, p)
+let shistorically (i, li, ps) = SHistorically (s_size (SHistorically (0, i, li, ps)), i, li, ps)
+let shistoricallyoutl i = SHistoricallyOutL (s_size (SHistoricallyOutL (0, i)), i)
+let seventually (i, p) = SEventually (s_size (SEventually (0, i, p)), i, p)
+let salways (i, hi, ps) = SAlways (s_size (SAlways (0, i, hi, ps)), i, hi, ps)
+let ssince (p1, p2s) = SSince (s_size (SSince (0, p1, p2s)), p1, p2s)
+let suntil (p1, p2s) = SUntil (s_size (SUntil (0, p1, p2s)), p1, p2s)
+
+let vff i = VFF (v_size (VFF (0, i)), i)
+let vatom (i, x) = VAtom (v_size (VAtom (0, i, x)), i, x)
+let vneg p = VNeg (v_size (VNeg (0, p)), p)
+let vdisj (p1, p2) = VDisj (v_size (VDisj (0, p1, p2)), p1, p2)
+let vconjl p = VConjL (v_size (VConjL (0, p)), p)
+let vconjr p = VConjR (v_size (VConjR (0, p)), p)
+let vimpl (p1, p2) = VImpl (v_size (VImpl (0, p1, p2)), p1, p2)
+let viffsv (p1, p2) = VIffSV (v_size (VIffSV (0, p1, p2)), p1, p2)
+let viffvs (p1, p2) = VIffVS (v_size (VIffVS (0, p1, p2)), p1, p2)
+let vprev0 = VPrev0 (v_size (VPrev0 0))
+let vprevoutl i = VPrevOutL (v_size (VPrevOutL (0, i)), i)
+let vprevoutr i = VPrevOutR (v_size (VPrevOutR (0, i)), i)
+let vprev p = VPrev (v_size (VPrev (0, p)), p)
+let vnextoutl i = VNextOutL (v_size (VNextOutL (0, i)), i)
+let vnextoutr i = VNextOutR (v_size (VNextOutR (0, i)), i)
+let vnext p = VNext (v_size (VNext (0, p)), p)
+let vonceoutl i = VOnceOutL (v_size (VOnceOutL (0, i)), i)
+let vonce (i, li, ps) = VOnce (v_size (VOnce (0, i, li, ps)), i, li, ps)
+let vhistorically (i, p) = VHistorically (v_size (VHistorically (0, i, p)), i, p)
+let veventually (i, hi, ps) = VEventually (v_size (VEventually (0, i, hi, ps)), i, hi, ps)
+let valways (i, p) = VAlways (v_size (VAlways (0, i, p)), i, p)
+let vsince (i, p1, p2s) = VSince (v_size (VSince (0, i, p1, p2s)), i, p1, p2s)
+let vsinceinf (i, li, p2s) = VSinceInf (v_size (VSinceInf (0, i, li, p2s)), i, li, p2s)
+let vsinceoutl i = VSinceOutL (v_size (VSinceOutL (0, i)), i)
+let vuntil (i, p1, p2s) = VUntil (v_size (VUntil (0, i, p1, p2s)), i, p1, p2s)
+let vuntilinf (i, hi, p2s) = VUntilInf (v_size (VUntilInf (0, i, hi, p2s)), i, hi, p2s)
+
+(* Operations on proofs *)
+let sappend sp sp1 = match sp with
+  | SSince (_, sp2, sp1s) -> ssince (sp2, List.append sp1s [sp1])
+  | SUntil (_, sp2, sp1s) -> suntil (sp2, sp1 :: sp1s)
+  | _ -> failwith "Bad arguments for sappend"
+
+let vappend vp vp2 = match vp with
+  | VSince (_, tp, vp1, vp2s) -> vsince (tp,  vp1, List.append vp2s [vp2])
+  | VSinceInf (_, tp, etp, vp2s) -> vsinceinf (tp, etp, List.append vp2s [vp2])
+  | VUntil (_, tp, vp1, vp2s) -> vuntil (tp, vp1, vp2 :: vp2s)
+  | VUntilInf (_, tp, ltp, vp2s) -> vuntilinf (tp, ltp, vp2 :: vp2s)
+  | _ -> failwith "Bad arguments for vappend"
+
+let sdrop sp = match sp with
+  | SUntil (_, _, []) -> None
+  | SUntil (_, sp2, sp1s) -> Some (suntil (sp2, drop_front sp1s))
+  | _ -> failwith "Bad arguments for sdrop"
+
+let vdrop vp = match vp with
+  | VUntil (_, _, _, _::[]) -> None
+  | VUntil (_, tp, vp1, vp2s) -> Some (vuntil (tp, vp1, drop_front vp2s))
+  | VUntilInf (_, _, _, []) -> None
+  | VUntilInf (_, tp, ltp, vp2s) -> Some (vuntilinf (tp, ltp, drop_front vp2s))
+  | _ -> failwith "Bad arguments for vdrop"
+
 (***********************************
  *                                 *
- * Measure: size                   *
- *                                 *
- ***********************************)
-let rec s_size = function
-  | STT _ -> 1
-  | SAtom (_, _) -> 1
-  | SNeg vphi -> 1 + v_size vphi
-  | SDisjL sphi -> 1 + s_size sphi
-  | SDisjR spsi -> 1 + s_size spsi
-  | SConj (sphi, spsi) -> 1 + s_size sphi + s_size spsi
-  | SImplL vphi -> 1 + v_size vphi
-  | SImplR spsi -> 1 + s_size spsi
-  | SIffSS (sphi, spsi) -> 1 + s_size sphi + s_size spsi
-  | SIffVV (vphi, vpsi) -> 1 + v_size vphi + v_size vpsi
-  | SPrev sphi -> 1 + s_size sphi
-  | SNext sphi -> 1 + s_size sphi
-  | SOnce (_, sphi) -> 1 + s_size sphi
-  | SHistorically (_, _, sphis) -> 1 + sum s_size sphis
-  | SHistoricallyOutL _ -> 1
-  | SEventually (_, sphi) -> 1 + s_size sphi
-  | SAlways (_, _, sphis) -> 1 + sum s_size sphis
-  | SSince (spsi, sphis) -> 1 + s_size spsi + sum s_size sphis
-  | SUntil (spsi, sphis) -> 1 + s_size spsi + sum s_size sphis
-and v_size = function
-  | VFF _ -> 1
-  | VAtom (_, _) -> 1
-  | VNeg sphi -> 1 + s_size sphi
-  | VDisj (vphi, vpsi) -> 1 + v_size vphi + v_size vpsi
-  | VConjL vphi -> 1 + v_size vphi
-  | VConjR vpsi -> 1 + v_size vpsi
-  | VImpl (sphi, vpsi) -> 1 + s_size sphi + v_size vpsi
-  | VIffSV (sphi, vpsi) -> 1 + s_size sphi + v_size vpsi
-  | VIffVS (vphi, spsi) -> 1 + v_size vphi + s_size spsi
-  | VPrev0 -> 1
-  | VPrevOutL _ -> 1
-  | VPrevOutR _ -> 1
-  | VPrev vphi -> 1 + v_size vphi
-  | VNextOutL _ -> 1
-  | VNextOutR _ -> 1
-  | VNext vphi -> 1 + v_size vphi
-  | VOnceOutL _ -> 1
-  | VOnce (_, _, vphis) -> 1 + sum v_size vphis
-  | VHistorically (_, vphi) -> 1 + v_size vphi
-  | VEventually (_, _, vphis) -> 1 + sum v_size vphis
-  | VAlways (_, vphi) -> 1 + v_size vphi
-  | VSince (_, vphi, vpsis) -> 1 + v_size vphi + sum v_size vpsis
-  | VSinceInf (_, _, vpsis) -> 1 + sum v_size vpsis
-  | VSinceOutL _ -> 1
-  | VUntil (_, vphi, vpsis) -> 1 + v_size vphi + sum v_size vpsis
-  | VUntilInf (_, _, vpsis) -> 1 + sum v_size vpsis
-
-let size = function
-  | S s_p -> s_size s_p
-  | V v_p -> v_size v_p
-
-let size_le = mk_le size
-
-let minsize a b = if size a <= size b then a else b
-let minsize_list = function
-  | [] -> failwith "empty list for minsize_list"
-  | x::xs -> List.fold_left minsize x xs
-
-(***********************************
- *                                 *
- * Measure: wsize                   *
+ * Measure: wsize                  *
  *                                 *
  ***********************************)
 let rec s_wsize ws = function
