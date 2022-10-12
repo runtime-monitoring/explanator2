@@ -69,69 +69,53 @@ exception SEXPL
 let unS = function S p -> p | _ -> raise VEXPL
 let unV = function V p -> p | _ -> raise SEXPL
 
-(***********************************
- *                                 *
- * Measure: size                   *
- *                                 *
- ***********************************)
-let rec s_size = function
+let rec pre_s_size = function
   | STT _ -> 1
   | SAtom _ -> 1
-  | SNeg (_, vphi) -> 1 + v_size vphi
-  | SDisjL (_, sphi) -> 1 + s_size sphi
-  | SDisjR (_, spsi) -> 1 + s_size spsi
-  | SConj (_, sphi, spsi) -> 1 + s_size sphi + s_size spsi
-  | SImplL (_, vphi) -> 1 + v_size vphi
-  | SImplR (_, spsi) -> 1 + s_size spsi
-  | SIffSS (_, sphi, spsi) -> 1 + s_size sphi + s_size spsi
-  | SIffVV (_, vphi, vpsi) -> 1 + v_size vphi + v_size vpsi
-  | SPrev (_, sphi) -> 1 + s_size sphi
-  | SNext (_, sphi) -> 1 + s_size sphi
-  | SOnce (_, sphi) -> 1 + s_size sphi
-  | SHistorically (_, _, sphis) -> 1 + sum s_size sphis
+  | SNeg (_, vphi) -> 1 + pre_v_size vphi
+  | SDisjL (_, sphi) -> 1 + pre_s_size sphi
+  | SDisjR (_, spsi) -> 1 + pre_s_size spsi
+  | SConj (_, sphi, spsi) -> 1 + pre_s_size sphi + pre_s_size spsi
+  | SImplL (_, vphi) -> 1 + pre_v_size vphi
+  | SImplR (_, spsi) -> 1 + pre_s_size spsi
+  | SIffSS (_, sphi, spsi) -> 1 + pre_s_size sphi + pre_s_size spsi
+  | SIffVV (_, vphi, vpsi) -> 1 + pre_v_size vphi + pre_v_size vpsi
+  | SPrev (_, sphi) -> 1 + pre_s_size sphi
+  | SNext (_, sphi) -> 1 + pre_s_size sphi
+  | SOnce (_, sphi) -> 1 + pre_s_size sphi
+  | SHistorically (_, _, sphis) -> 1 + sum pre_s_size sphis
   | SHistoricallyOutL _ -> 1
-  | SEventually (_, sphi) -> 1 + s_size sphi
-  | SAlways (_, _, sphis) -> 1 + sum s_size sphis
-  | SSince (_, spsi, sphis) -> 1 + s_size spsi + sum s_size sphis
-  | SUntil (_, spsi, sphis) -> 1 + s_size spsi + sum s_size sphis
-and v_size = function
+  | SEventually (_, sphi) -> 1 + pre_s_size sphi
+  | SAlways (_, _, sphis) -> 1 + sum pre_s_size sphis
+  | SSince (_, spsi, sphis) -> 1 + pre_s_size spsi + sum pre_s_size sphis
+  | SUntil (_, spsi, sphis) -> 1 + pre_s_size spsi + sum pre_s_size sphis
+and pre_v_size = function
   | VFF _ -> 1
   | VAtom (_, _) -> 1
-  | VNeg (_, sphi) -> 1 + s_size sphi
-  | VDisj (_, vphi, vpsi) -> 1 + v_size vphi + v_size vpsi
-  | VConjL (_, vphi) -> 1 + v_size vphi
-  | VConjR (_, vpsi) -> 1 + v_size vpsi
-  | VImpl (_, sphi, vpsi) -> 1 + s_size sphi + v_size vpsi
-  | VIffSV (_, sphi, vpsi) -> 1 + s_size sphi + v_size vpsi
-  | VIffVS (_, vphi, spsi) -> 1 + v_size vphi + s_size spsi
+  | VNeg (_, sphi) -> 1 + pre_s_size sphi
+  | VDisj (_, vphi, vpsi) -> 1 + pre_v_size vphi + pre_v_size vpsi
+  | VConjL (_, vphi) -> 1 + pre_v_size vphi
+  | VConjR (_, vpsi) -> 1 + pre_v_size vpsi
+  | VImpl (_, sphi, vpsi) -> 1 + pre_s_size sphi + pre_v_size vpsi
+  | VIffSV (_, sphi, vpsi) -> 1 + pre_s_size sphi + pre_v_size vpsi
+  | VIffVS (_, vphi, spsi) -> 1 + pre_v_size vphi + pre_s_size spsi
   | VPrev0 _ -> 1
   | VPrevOutL _ -> 1
   | VPrevOutR _ -> 1
-  | VPrev (_, vphi) -> 1 + v_size vphi
+  | VPrev (_, vphi) -> 1 + pre_v_size vphi
   | VNextOutL _ -> 1
   | VNextOutR _ -> 1
-  | VNext (_, vphi) -> 1 + v_size vphi
+  | VNext (_, vphi) -> 1 + pre_v_size vphi
   | VOnceOutL _ -> 1
-  | VOnce (_, _, vphis) -> 1 + sum v_size vphis
-  | VHistorically (_, vphi) -> 1 + v_size vphi
-  | VEventually (_, _, vphis) -> 1 + sum v_size vphis
-  | VAlways (_, vphi) -> 1 + v_size vphi
-  | VSince (_, vphi, vpsis) -> 1 + v_size vphi + sum v_size vpsis
-  | VSinceInf (_, _, vpsis) -> 1 + sum v_size vpsis
+  | VOnce (_, _, vphis) -> 1 + sum pre_v_size vphis
+  | VHistorically (_, vphi) -> 1 + pre_v_size vphi
+  | VEventually (_, _, vphis) -> 1 + sum pre_v_size vphis
+  | VAlways (_, vphi) -> 1 + pre_v_size vphi
+  | VSince (_, vphi, vpsis) -> 1 + pre_v_size vphi + sum pre_v_size vpsis
+  | VSinceInf (_, _, vpsis) -> 1 + sum pre_v_size vpsis
   | VSinceOutL _ -> 1
-  | VUntil (_, vphi, vpsis) -> 1 + v_size vphi + sum v_size vpsis
-  | VUntilInf (_, _, vpsis) -> 1 + sum v_size vpsis
-
-let size = function
-  | S s_p -> s_size s_p
-  | V v_p -> v_size v_p
-
-let size_le = mk_le size
-
-let minsize a b = if size a <= size b then a else b
-let minsize_list = function
-  | [] -> failwith "empty list for minsize_list"
-  | x::xs -> List.fold_left minsize x xs
+  | VUntil (_, vphi, vpsis) -> 1 + pre_v_size vphi + sum pre_v_size vpsis
+  | VUntilInf (_, _, vpsis) -> 1 + sum pre_v_size vpsis
 
 (* time-point calculation *)
 (* note that we only use the explicit time-points for the cases
@@ -207,205 +191,205 @@ let p_at = function
 let foo = (0, 0)
 
 let stt i =
-  let s = s_size (STT foo) in
+  let s = pre_s_size (STT foo) in
   STT (s, i)
 
 let satom (i, x) =
-  let s = s_size (SAtom (foo, x)) in
+  let s = pre_s_size (SAtom (foo, x)) in
   SAtom ((s, i), x)
 
 let sneg p =
-  let s = s_size (SNeg (foo, p)) in
+  let s = pre_s_size (SNeg (foo, p)) in
   let i = s_at (SNeg (foo, p)) in
   SNeg ((s, i), p)
 
 let sdisjl p =
-  let s = s_size (SDisjL (foo, p)) in
+  let s = pre_s_size (SDisjL (foo, p)) in
   let i = s_at (SDisjL (foo, p)) in
   SDisjL ((s, i), p)
 
 let sdisjr p =
-  let s = s_size (SDisjR (foo, p)) in
+  let s = pre_s_size (SDisjR (foo, p)) in
   let i = s_at (SDisjR (foo, p)) in
   SDisjR ((s, i), p)
 
 let sconj (p1, p2) =
-  let s = s_size (SConj (foo, p1, p2)) in
+  let s = pre_s_size (SConj (foo, p1, p2)) in
   let i = s_at (SConj (foo, p1, p2)) in
   SConj ((s, i), p1, p2)
 
 let simpll p =
-  let s = s_size (SImplL (foo, p)) in
+  let s = pre_s_size (SImplL (foo, p)) in
   let i = s_at (SImplL (foo, p)) in
   SImplL ((s, i), p)
 
 let simplr p =
-  let s = s_size (SImplR (foo, p)) in
+  let s = pre_s_size (SImplR (foo, p)) in
   let i = s_at (SImplR (foo, p)) in
   SImplR ((s, i), p)
 
 let siffss (p1, p2) =
-  let s = s_size (SIffSS (foo, p1, p2)) in
+  let s = pre_s_size (SIffSS (foo, p1, p2)) in
   let i = s_at (SIffSS (foo, p1, p2)) in
   SIffSS ((s, i), p1, p2)
 
 let siffvv (p1, p2) =
-  let s = s_size (SIffVV (foo, p1, p2)) in
+  let s = pre_s_size (SIffVV (foo, p1, p2)) in
   let i = s_at (SIffVV (foo, p1, p2)) in
   SIffVV ((s, i), p1, p2)
 
 let sprev p =
-  let s = s_size (SPrev (foo, p)) in
+  let s = pre_s_size (SPrev (foo, p)) in
   let i = s_at (SPrev (foo, p)) in
   SPrev ((s, i), p)
 
 let snext p =
-  let s = s_size (SNext (foo, p)) in
+  let s = pre_s_size (SNext (foo, p)) in
   let i = s_at (SNext (foo, p)) in
   SNext ((s, i), p)
 
 let sonce (i, p) =
-  let s = s_size (SOnce (foo, p)) in
+  let s = pre_s_size (SOnce (foo, p)) in
   SOnce ((s, i), p)
 
 let shistorically (i, li, ps) =
-  let s = s_size (SHistorically (foo, 0, ps)) in
+  let s = pre_s_size (SHistorically (foo, 0, ps)) in
   SHistorically ((s, i), li, ps)
 
 let shistoricallyoutl i =
-  let s = s_size (SHistoricallyOutL foo) in
+  let s = pre_s_size (SHistoricallyOutL foo) in
   SHistoricallyOutL (s, i)
 
 let seventually (i, p) =
-  let s = s_size (SEventually (foo, p)) in
+  let s = pre_s_size (SEventually (foo, p)) in
   SEventually ((s, i), p)
 
 let salways (i, hi, ps) =
-  let s = s_size (SAlways (foo, 0, ps)) in
+  let s = pre_s_size (SAlways (foo, 0, ps)) in
   SAlways ((s, i), hi, ps)
 
 let ssince (p1, p2s) =
-  let s = s_size (SSince (foo, p1, p2s)) in
+  let s = pre_s_size (SSince (foo, p1, p2s)) in
   let i = s_at (SSince (foo, p1, p2s)) in
   SSince ((s, i), p1, p2s)
 
 let suntil (p1, p2s) =
-  let s = s_size (SUntil (foo, p1, p2s)) in
+  let s = pre_s_size (SUntil (foo, p1, p2s)) in
   let i = s_at (SUntil (foo, p1, p2s)) in
   SUntil ((s, i), p1, p2s)
 
 let vff i =
-  let s = v_size (VFF foo) in
+  let s = pre_v_size (VFF foo) in
   VFF (s, i)
 
 let vatom (i, x) =
-  let s = v_size (VAtom (foo, x)) in
+  let s = pre_v_size (VAtom (foo, x)) in
   VAtom ((s, i), x)
 
 let vneg p =
-  let s = v_size (VNeg (foo, p)) in
+  let s = pre_v_size (VNeg (foo, p)) in
   let i = v_at (VNeg (foo, p)) in
   VNeg ((s, i), p)
 
 let vdisj (p1, p2) =
-  let s = v_size (VDisj (foo, p1, p2)) in
+  let s = pre_v_size (VDisj (foo, p1, p2)) in
   let i = v_at (VDisj (foo, p1, p2)) in
   VDisj ((s, i), p1, p2)
 
 let vconjl p =
-  let s = v_size (VConjL (foo, p)) in
+  let s = pre_v_size (VConjL (foo, p)) in
   let i = v_at (VConjL (foo, p)) in
   VConjL ((s, i), p)
 
 let vconjr p =
-  let s = v_size (VConjR (foo, p)) in
+  let s = pre_v_size (VConjR (foo, p)) in
   let i = v_at (VConjR (foo, p)) in
   VConjR ((s, i), p)
 
 let vimpl (p1, p2) =
-  let s = v_size (VImpl (foo, p1, p2)) in
+  let s = pre_v_size (VImpl (foo, p1, p2)) in
   let i = v_at (VImpl (foo, p1, p2)) in
   VImpl ((s, i), p1, p2)
 
 let viffsv (p1, p2) =
-  let s = v_size (VIffSV (foo, p1, p2)) in
+  let s = pre_v_size (VIffSV (foo, p1, p2)) in
   let i = v_at (VIffSV (foo, p1, p2)) in
   VIffSV ((s, i), p1, p2)
 
 let viffvs (p1, p2) =
-  let s = v_size (VIffVS (foo, p1, p2)) in
+  let s = pre_v_size (VIffVS (foo, p1, p2)) in
   let i = v_at (VIffVS (foo, p1, p2)) in
   VIffVS ((s, i), p1, p2)
 
 let vprev0 =
-  let s = v_size (VPrev0 foo) in
+  let s = pre_v_size (VPrev0 foo) in
   let i = v_at (VPrev0 foo) in
   VPrev0 (s, i)
 
 let vprevoutl i =
-  let s = v_size (VPrevOutL foo) in
+  let s = pre_v_size (VPrevOutL foo) in
   VPrevOutL (s, i)
 
 let vprevoutr i =
-  let s = v_size (VPrevOutR foo) in
+  let s = pre_v_size (VPrevOutR foo) in
   VPrevOutR (s, i)
 
 let vprev p =
-  let s = v_size (VPrev (foo, p)) in
+  let s = pre_v_size (VPrev (foo, p)) in
   let i = v_at (VPrev (foo, p)) in
   VPrev ((s, i), p)
 
 let vnextoutl i =
-  let s = v_size (VNextOutL foo) in
+  let s = pre_v_size (VNextOutL foo) in
   VNextOutL (s, i)
 
 let vnextoutr i =
-  let s = v_size (VNextOutR foo) in
+  let s = pre_v_size (VNextOutR foo) in
   VNextOutR (s, i)
 
 let vnext p =
-  let s = v_size (VNext (foo, p)) in
+  let s = pre_v_size (VNext (foo, p)) in
   let i = v_at (VNext (foo, p)) in
   VNext ((s, i), p)
 
 let vonceoutl i =
-  let s = v_size (VOnceOutL foo) in
+  let s = pre_v_size (VOnceOutL foo) in
   VOnceOutL (s, i)
 
 let vonce (i, li, ps) =
-  let s = v_size (VOnce (foo, 0, ps)) in
+  let s = pre_v_size (VOnce (foo, 0, ps)) in
   VOnce ((s, i), li, ps)
 
 let vhistorically (i, p) =
-  let s = v_size (VHistorically (foo, p)) in
+  let s = pre_v_size (VHistorically (foo, p)) in
   VHistorically ((s, i), p)
 
 let veventually (i, hi, ps) =
-  let s = v_size (VEventually (foo, 0, ps)) in
+  let s = pre_v_size (VEventually (foo, 0, ps)) in
   VEventually ((s, i), hi, ps)
 
 let valways (i, p) =
-  let s = v_size (VAlways (foo, p)) in
+  let s = pre_v_size (VAlways (foo, p)) in
   VAlways ((s, i), p)
 
 let vsince (i, p1, p2s) =
-  let s = v_size (VSince (foo, p1, p2s)) in
+  let s = pre_v_size (VSince (foo, p1, p2s)) in
   VSince ((s, i), p1, p2s)
 
 let vsinceinf (i, li, p2s) =
-  let s = v_size (VSinceInf (foo, li, p2s)) in
+  let s = pre_v_size (VSinceInf (foo, li, p2s)) in
   VSinceInf ((s, i), li, p2s)
 
 let vsinceoutl i =
-  let s = v_size (VSinceOutL foo) in
+  let s = pre_v_size (VSinceOutL foo) in
   VSinceOutL (s, i)
 
 let vuntil (i, p1, p2s) =
-  let s = v_size (VUntil (foo, p1, p2s)) in
+  let s = pre_v_size (VUntil (foo, p1, p2s)) in
   VUntil ((s, i), p1, p2s)
 
 let vuntilinf (i, hi, p2s) =
-  let s = v_size (VUntilInf (foo, hi, p2s)) in
+  let s = pre_v_size (VUntilInf (foo, hi, p2s)) in
   VUntilInf ((s, i), hi, p2s)
 
 (* Operations on proofs *)
@@ -432,6 +416,70 @@ let vdrop vp = match vp with
   | VUntilInf (_, _, []) -> None
   | VUntilInf ((_, tp), ltp, vp2s) -> Some (vuntilinf (tp, ltp, drop_front vp2s))
   | _ -> failwith "Bad arguments for vdrop"
+
+(***********************************
+ *                                 *
+ * Measure: size                   *
+ *                                 *
+ ***********************************)
+let rec s_size = function
+  | STT (s, _) -> s
+  | SAtom ((s, _), _) -> s
+  | SNeg ((s, _), _) -> s
+  | SDisjL ((s, _), _) -> s
+  | SDisjR ((s, _), _) -> s
+  | SConj ((s, _), _, _) -> s
+  | SImplL ((s, _), _) -> s
+  | SImplR ((s, _), _) -> s
+  | SIffSS ((s, _), _, _) -> s
+  | SIffVV ((s, _), _, _) -> s
+  | SPrev ((s, _), _) -> s
+  | SNext ((s, _), _) -> s
+  | SOnce ((s, _), _) -> s
+  | SHistorically ((s, _), _, _) -> s
+  | SHistoricallyOutL (s, _) -> s
+  | SEventually ((s, _), _) -> s
+  | SAlways ((s, _), _, _) -> s
+  | SSince ((s, _), _, _) -> s
+  | SUntil ((s, _), _, _) -> s
+and v_size = function
+  | VFF (s, _) -> s
+  | VAtom ((s, _), _) -> s
+  | VNeg ((s, _), _) -> s
+  | VDisj ((s, _), _, _) -> s
+  | VConjL ((s, _), _) -> s
+  | VConjR ((s, _), _) -> s
+  | VImpl ((s, _), _, _) -> s
+  | VIffSV ((s, _), _, _) -> s
+  | VIffVS ((s, _), _, _) -> s
+  | VPrev0 (s, _) -> s
+  | VPrevOutL (s, _) -> s
+  | VPrevOutR (s, _) -> s
+  | VPrev ((s, _), _) -> s
+  | VNextOutL (s, _) -> s
+  | VNextOutR (s, _) -> s
+  | VNext ((s, _), _) -> s
+  | VOnceOutL (s, _) -> s
+  | VOnce ((s, _), _, _) -> s
+  | VHistorically ((s, _), _) -> s
+  | VEventually ((s, _), _, _) -> s
+  | VAlways ((s, _), _) -> s
+  | VSince ((s, _), _, _) -> s
+  | VSinceInf ((s, _), _, _) -> s
+  | VSinceOutL (s, _) -> s
+  | VUntil ((s, _), _, _) -> s
+  | VUntilInf ((s, _), _, _) -> s
+
+let size = function
+  | S s_p -> s_size s_p
+  | V v_p -> v_size v_p
+
+let size_le = mk_le size
+
+let minsize a b = if size a <= size b then a else b
+let minsize_list = function
+  | [] -> failwith "empty list for minsize_list"
+  | x::xs -> List.fold_left minsize x xs
 
 (***********************************
  *                                 *
