@@ -29,7 +29,7 @@ type sexpl =
   | SEventually       of aux * sexpl
   | SAlways           of aux * int * sexpl list
   | SSince            of aux * sexpl * sexpl list
-  | SUntil            of aux * sexpl * sexpl list
+  | SUntil            of aux * int * sexpl * sexpl list
 and vexpl =
   | VFF               of aux
   | VAtom             of aux * string
@@ -55,7 +55,7 @@ and vexpl =
   | VSince            of aux * vexpl * vexpl list
   | VSinceInf         of aux * int * vexpl list
   | VSinceOutL        of aux
-  | VUntil            of aux * vexpl * vexpl list
+  | VUntil            of aux * int * vexpl * vexpl list
   | VUntilInf         of aux * int * vexpl list
 
 type expl = S of sexpl | V of vexpl

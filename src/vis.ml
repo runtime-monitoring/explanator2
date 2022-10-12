@@ -140,7 +140,7 @@ let rec update_expl_table tbl idx f p =
      let cells = List.map sps ~f:(fun sp -> (s_at sp, sps_idx, None, true)) in
      ((cell, cells) :: tbl', idx')
   | Since (i, f1, f2), S (SSince (_, sp2, []))
-  | Until (i, f1, f2), S (SUntil (_, sp2, [])) ->
+  | Until (i, f1, f2), S (SUntil (_, _, sp2, [])) ->
      let sp1_idx = idx+1 in
      (* Recursive calls *)
      let sp2_idx = (f_idx sp1_idx f1)+1 in
@@ -152,7 +152,7 @@ let rec update_expl_table tbl idx f p =
      let cells = [(s_at sp2, sp2_idx, None, true)] in
      ((cell, cells) :: tbl', idx')
   | Since (i, f1, f2), S (SSince (_, sp2, sp1s))
-  | Until (i, f1, f2), S (SUntil (_, sp2, sp1s)) ->
+  | Until (i, f1, f2), S (SUntil (_, _, sp2, sp1s)) ->
      let sp1_idx = idx+1 in
      (* Recursive calls *)
      let (tbl', idx') = List.fold sp1s ~init:(tbl, sp1_idx)
@@ -240,7 +240,7 @@ let rec update_expl_table tbl idx f p =
      let cells = List.map vps ~f:(fun vp -> (v_at vp, vps_idx, None, false)) in
      ((cell, cells) :: tbl', idx')
   | Since (i, f1, _), V (VSince (_, vp1, []))
-  | Until (i, f1, _), V (VUntil (_, vp1, [])) ->
+  | Until (i, f1, _), V (VUntil (_, _, vp1, [])) ->
      let vp1_idx = idx+1 in
      let (tbl', idx') = update_expl_table tbl vp1_idx f1 (V vp1) in
      let cell = match f with Since _ -> (p_at p, idx, Some(i, PAST), false)
@@ -249,7 +249,7 @@ let rec update_expl_table tbl idx f p =
      let cells = [(v_at vp1, vp1_idx, None, false)] in
      ((cell, cells) :: tbl', idx')
   | Since (i, f1, f2), V (VSince (_, vp1, vp2s))
-  | Until (i, f1, f2), V (VUntil (_, vp1, vp2s)) ->
+  | Until (i, f1, f2), V (VUntil (_, _, vp1, vp2s)) ->
      let vp1_idx = idx+1 in
      let (tbl', idx') = update_expl_table tbl vp1_idx f1 (V vp1) in
      let vp2_idx = idx'+1 in

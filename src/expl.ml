@@ -32,7 +32,7 @@ type sexpl =
   | SEventually       of aux * sexpl
   | SAlways           of aux * int * sexpl list
   | SSince            of aux * sexpl * sexpl list
-  | SUntil            of aux * sexpl * sexpl list
+  | SUntil            of aux * int * sexpl * sexpl list
 and vexpl =
   | VFF               of aux
   | VAtom             of aux * string
@@ -58,7 +58,7 @@ and vexpl =
   | VSince            of aux * vexpl * vexpl list
   | VSinceInf         of aux * int * vexpl list
   | VSinceOutL        of aux
-  | VUntil            of aux * vexpl * vexpl list
+  | VUntil            of aux * int * vexpl * vexpl list
   | VUntilInf         of aux * int * vexpl list
 
 type expl = S of sexpl | V of vexpl
@@ -88,7 +88,7 @@ let rec pre_s_size = function
   | SEventually (_, sphi) -> 1 + pre_s_size sphi
   | SAlways (_, _, sphis) -> 1 + sum pre_s_size sphis
   | SSince (_, spsi, sphis) -> 1 + pre_s_size spsi + sum pre_s_size sphis
-  | SUntil (_, spsi, sphis) -> 1 + pre_s_size spsi + sum pre_s_size sphis
+  | SUntil (_, _, spsi, sphis) -> 1 + pre_s_size spsi + sum pre_s_size sphis
 and pre_v_size = function
   | VFF _ -> 1
   | VAtom (_, _) -> 1
@@ -114,7 +114,7 @@ and pre_v_size = function
   | VSince (_, vphi, vpsis) -> 1 + pre_v_size vphi + sum pre_v_size vpsis
   | VSinceInf (_, _, vpsis) -> 1 + sum pre_v_size vpsis
   | VSinceOutL _ -> 1
-  | VUntil (_, vphi, vpsis) -> 1 + pre_v_size vphi + sum pre_v_size vpsis
+  | VUntil (_, _, vphi, vpsis) -> 1 + pre_v_size vphi + sum pre_v_size vpsis
   | VUntilInf (_, _, vpsis) -> 1 + sum pre_v_size vpsis
 
 (* time-point calculation *)
@@ -141,7 +141,7 @@ let rec s_at = function
   | SSince (_, spsi, sphis) -> (match sphis with
       | [] -> s_at spsi
       | _ -> s_at (last sphis))
-  | SUntil (_, spsi, sphis) -> (match sphis with
+  | SUntil (_, _, spsi, sphis) -> (match sphis with
       | [] -> s_at spsi
       | x :: _ -> s_at x)
 and v_at = function
@@ -169,16 +169,24 @@ and v_at = function
   | VSince ((_, i), _, _) -> i
   | VSinceInf ((_, i), _, _) -> i
   | VSinceOutL (_, i) -> i
-  | VUntil ((_, i), _, _) -> i
+  | VUntil ((_, i), _, _, _) -> i
   | VUntilInf ((_, i), _, _) -> i
 
+let pre_s_ltp sp = match sp with
+  | SUntil (_, _, sp2, _) -> s_at sp2
+  | _ -> failwith "Bad arguments for s_ltp"
+
+let pre_v_etp vp = match vp with
+  | VUntil ((_, i), _, _, []) -> i
+  | VUntil (_, _, _, vp2::_) -> v_at vp2
+  | _ -> failwith "Bad arguments for v_etp"
+
 let s_ltp sp = match sp with
-  | SUntil (_, sp2, _) -> s_at sp2
+  | SUntil (_, ltp, _, _) -> ltp
   | _ -> failwith "Bad arguments for s_ltp"
 
 let v_etp vp = match vp with
-  | VUntil ((_, i), _, []) -> i
-  | VUntil (_, _, vp2::_) -> v_at vp2
+  | VUntil (_, etp, _, _) -> etp
   | _ -> failwith "Bad arguments for v_etp"
 
 let p_at = function
@@ -274,9 +282,10 @@ let ssince (p1, p2s) =
   SSince ((s, i), p1, p2s)
 
 let suntil (p1, p2s) =
-  let s = pre_s_size (SUntil (foo, p1, p2s)) in
-  let i = s_at (SUntil (foo, p1, p2s)) in
-  SUntil ((s, i), p1, p2s)
+  let s = pre_s_size (SUntil (foo, 0, p1, p2s)) in
+  let i = s_at (SUntil (foo, 0, p1, p2s)) in
+  let ltp = pre_s_ltp (SUntil (foo, 0, p1, p2s)) in
+  SUntil ((s, i), ltp, p1, p2s)
 
 let vff i =
   let s = pre_v_size (VFF foo) in
@@ -385,8 +394,9 @@ let vsinceoutl i =
   VSinceOutL (s, i)
 
 let vuntil (i, p1, p2s) =
-  let s = pre_v_size (VUntil (foo, p1, p2s)) in
-  VUntil ((s, i), p1, p2s)
+  let s = pre_v_size (VUntil (foo, 0, p1, p2s)) in
+  let etp = pre_v_etp (VUntil (foo, 0, p1, p2s)) in
+  VUntil ((s, i), etp, p1, p2s)
 
 let vuntilinf (i, hi, p2s) =
   let s = pre_v_size (VUntilInf (foo, hi, p2s)) in
@@ -395,24 +405,24 @@ let vuntilinf (i, hi, p2s) =
 (* Operations on proofs *)
 let sappend sp sp1 = match sp with
   | SSince (_, sp2, sp1s) -> ssince (sp2, List.append sp1s [sp1])
-  | SUntil (_, sp2, sp1s) -> suntil (sp2, sp1 :: sp1s)
+  | SUntil (_, _, sp2, sp1s) -> suntil (sp2, sp1 :: sp1s)
   | _ -> failwith "Bad arguments for sappend"
 
 let vappend vp vp2 = match vp with
   | VSince ((_, tp), vp1, vp2s) -> vsince (tp, vp1, List.append vp2s [vp2])
   | VSinceInf ((_, tp), etp, vp2s) -> vsinceinf (tp, etp, List.append vp2s [vp2])
-  | VUntil ((_, tp), vp1, vp2s) -> vuntil (tp, vp1, vp2 :: vp2s)
+  | VUntil ((_, tp), _, vp1, vp2s) -> vuntil (tp, vp1, vp2 :: vp2s)
   | VUntilInf ((_, tp), ltp, vp2s) -> vuntilinf (tp, ltp, vp2 :: vp2s)
   | _ -> failwith "Bad arguments for vappend"
 
 let sdrop sp = match sp with
-  | SUntil (_, _, []) -> None
-  | SUntil (_, sp2, sp1s) -> Some (suntil (sp2, drop_front sp1s))
+  | SUntil (_, _, _, []) -> None
+  | SUntil (_, _, sp2, sp1s) -> Some (suntil (sp2, drop_front sp1s))
   | _ -> failwith "Bad arguments for sdrop"
 
 let vdrop vp = match vp with
-  | VUntil (_, _, _::[]) -> None
-  | VUntil ((_, tp), vp1, vp2s) -> Some (vuntil (tp, vp1, drop_front vp2s))
+  | VUntil (_, _, _, _::[]) -> None
+  | VUntil ((_, tp), _, vp1, vp2s) -> Some (vuntil (tp, vp1, drop_front vp2s))
   | VUntilInf (_, _, []) -> None
   | VUntilInf ((_, tp), ltp, vp2s) -> Some (vuntilinf (tp, ltp, drop_front vp2s))
   | _ -> failwith "Bad arguments for vdrop"
@@ -441,7 +451,7 @@ let rec s_size = function
   | SEventually ((s, _), _) -> s
   | SAlways ((s, _), _, _) -> s
   | SSince ((s, _), _, _) -> s
-  | SUntil ((s, _), _, _) -> s
+  | SUntil ((s, _), _, _, _) -> s
 and v_size = function
   | VFF (s, _) -> s
   | VAtom ((s, _), _) -> s
@@ -467,7 +477,7 @@ and v_size = function
   | VSince ((s, _), _, _) -> s
   | VSinceInf ((s, _), _, _) -> s
   | VSinceOutL (s, _) -> s
-  | VUntil ((s, _), _, _) -> s
+  | VUntil ((s, _), _, _, _) -> s
   | VUntilInf ((s, _), _, _) -> s
 
 let size = function
@@ -742,7 +752,7 @@ let rec s_to_string indent p =
   | SAlways (_, _, sphis) -> Printf.sprintf "%sSAlways{%d}\n%s" indent (s_at p) (list_to_string indent' s_to_string sphis)
   | SSince (_, spsi, sphis) ->
       Printf.sprintf "%sSSince{%d}\n%s\n%s" indent (s_at p) (s_to_string indent' spsi) (list_to_string indent' s_to_string sphis)
-  | SUntil (_, spsi, sphis) ->
+  | SUntil (_, _, spsi, sphis) ->
       Printf.sprintf "%sSUntil{%d}\n%s\n%s" indent (s_at p) (list_to_string indent' s_to_string sphis) (s_to_string indent' spsi)
 and v_to_string indent p =
   let indent' = "\t" ^ indent in
@@ -775,7 +785,7 @@ and v_to_string indent p =
   | VSinceInf (_, _, vphis) ->
      Printf.sprintf "%sVSinceInf{%d}\n%s" indent (v_at p) (list_to_string indent' v_to_string vphis)
   | VSinceOutL (_, i) -> Printf.sprintf "%sVSinceOutL{%d}" indent' i
-  | VUntil (_, vphi, vpsis) ->
+  | VUntil (_, _, vphi, vpsis) ->
       Printf.sprintf "%sVUntil{%d}\n%s\n%s" indent (v_at p) (list_to_string indent' v_to_string vpsis) (v_to_string indent' vphi)
   | VUntilInf (_, _, vpsis) ->
      Printf.sprintf "%sVUntilInf{%d}\n%s" indent (v_at p) (list_to_string indent' v_to_string vpsis)

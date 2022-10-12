@@ -1210,12 +1210,12 @@ module Until = struct
                             let cur_betas_alpha = Deque.peek_front_exn muaux.betas_alpha in
                             (if not (Deque.is_empty cur_betas_alpha) then
                                match Deque.peek_front_exn cur_betas_alpha with
-                               | (_, V VUntil(_, vp1, vp2s)) -> (match Deque.peek_front muaux.ts_tp_in with
-                                                                 | None -> []
-                                                                 | Some(_, first_tp_in) ->
-                                                                    if (v_etp (vuntil(tp, vp1, vp2s))) = first_tp_in then
-                                                                      [V (vuntil(tp, vp1, vp2s))]
-                                                                    else [])
+                               | (_, V VUntil(_, _, vp1, vp2s)) -> (match Deque.peek_front muaux.ts_tp_in with
+                                                                    | None -> []
+                                                                    | Some(_, first_tp_in) ->
+                                                                       if (v_etp (vuntil(tp, vp1, vp2s))) = first_tp_in then
+                                                                         [V (vuntil(tp, vp1, vp2s))]
+                                                                       else [])
                                | _ -> raise (INVALID_EXPL "Explanation should be VUntil")
                              else [])
                           else [] in

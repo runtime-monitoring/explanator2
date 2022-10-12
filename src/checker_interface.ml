@@ -53,9 +53,9 @@ let rec convert_sp sp =
   | SSince (_, sp2, sp1s) -> let sp1s' = List.rev(List.fold_left (fun acc sp1 ->
                                                       (convert_sp sp1)::acc) [] sp1s) in
                              SSince (convert_sp sp2, sp1s')
-  | SUntil (_, sp2, sp1s) -> let sp1s' = List.rev(List.fold_left (fun acc sp1 ->
-                                                      (convert_sp sp1)::acc) [] sp1s) in
-                             SUntil (sp1s', convert_sp sp2)
+  | SUntil (_, _, sp2, sp1s) -> let sp1s' = List.rev(List.fold_left (fun acc sp1 ->
+                                                         (convert_sp sp1)::acc) [] sp1s) in
+                                SUntil (sp1s', convert_sp sp2)
 and convert_vp vp =
   match vp with
   | VAtom ((_, tp), s) -> let tp_nat = nat_of_integer (of_int tp) in
@@ -100,10 +100,10 @@ and convert_vp vp =
                                    let vp2s' = List.rev(List.fold_left (fun acc vp2 ->
                                                             (convert_vp vp2)::acc) [] vp2s) in
                                    VSince (tp_nat, convert_vp vp1, vp2s')
-  | VUntil ((_, tp), vp1, vp2s) -> let tp_nat = nat_of_integer (of_int tp) in
-                                   let vp2s' = List.rev(List.fold_left (fun acc vp2 ->
-                                                            (convert_vp vp2)::acc) [] vp2s) in
-                                   VUntil (tp_nat, vp2s', convert_vp vp1)
+  | VUntil ((_, tp), _, vp1, vp2s) -> let tp_nat = nat_of_integer (of_int tp) in
+                                      let vp2s' = List.rev(List.fold_left (fun acc vp2 ->
+                                                               (convert_vp vp2)::acc) [] vp2s) in
+                                      VUntil (tp_nat, vp2s', convert_vp vp1)
   | VSinceInf ((_, tp), etp, vp2s) -> let tp_nat = nat_of_integer (of_int tp) in
                                       let etp_nat = nat_of_integer (of_int etp) in
                                       let vp2s' = List.rev(List.fold_left (fun acc vp2 ->
