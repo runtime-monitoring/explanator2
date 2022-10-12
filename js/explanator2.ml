@@ -22,7 +22,7 @@ module Explanator2 = struct
   let validate_measure m =
     match m with
     | "size" -> size_le
-    | "wsize" -> high_le
+    (* | "wsize" -> high_le *)
     | _ -> (fun _ _ -> true)
 
   let get_columns js_formula =

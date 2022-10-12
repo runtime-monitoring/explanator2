@@ -137,20 +137,20 @@ module Explanator2 = struct
   let set_measure measure =
     let measure_le =
       match measure with
-      | "size" | "SIZE" | "Size" -> if (Hashtbl.length weights_tbl) == 0 then size_le
-                                    else wsize_le weights_tbl
-      | "high" | "HIGH" | "High" -> high_le
+      | "size" | "SIZE" | "Size" -> (* if (Hashtbl.length weights_tbl) == 0 then *) size_le
+                                    (* else wsize_le weights_tbl *)
+      (* | "high" | "HIGH" | "High" -> high_le *)
       | "none" | "NONE" | "None" -> (fun _ _ -> true)
       | _ -> measure_error () in
     let is_opt =
       match measure with
-      | "size" | "SIZE" | "Size" -> if (Hashtbl.length weights_tbl) == 0 then
+      | "size" | "SIZE" | "Size" -> (* if (Hashtbl.length weights_tbl) == 0 then *)
                                       is_opt_atm (fun s -> nat_of_integer (Z.of_int 1))
-                                    else
-                                      is_opt_atm (fun s -> match Hashtbl.find_opt weights_tbl s with
-                                                           | None -> nat_of_integer (Z.of_int 1)
-                                                           | Some(w) -> nat_of_integer (Z.of_int w))
-      | "high" | "HIGH" | "High" -> is_opt_minmaxreach
+                                    (* else
+                                     *   is_opt_atm (fun s -> match Hashtbl.find_opt weights_tbl s with
+                                     *                        | None -> nat_of_integer (Z.of_int 1)
+                                     *                        | Some(w) -> nat_of_integer (Z.of_int w)) *)
+      (* | "high" | "HIGH" | "High" -> is_opt_minmaxreach *)
       | "none" | "NONE" | "None" -> (fun _ _ _ _ -> true)
       | _ -> measure_error () in
     (measure_le, is_opt)
