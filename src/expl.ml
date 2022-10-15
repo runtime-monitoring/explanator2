@@ -69,98 +69,197 @@ exception SEXPL
 let unS = function S p -> p | _ -> raise VEXPL
 let unV = function V p -> p | _ -> raise SEXPL
 
-let rec pre_s_size = function
+(* let rec pre_s_size = function *)
+(*   | STT _ -> 1 *)
+(*   | SAtom _ -> 1 *)
+(*   | SNeg (_, vphi) -> 1 + pre_v_size vphi *)
+(*   | SDisjL (_, sphi) -> 1 + pre_s_size sphi *)
+(*   | SDisjR (_, spsi) -> 1 + pre_s_size spsi *)
+(*   | SConj (_, sphi, spsi) -> 1 + pre_s_size sphi + pre_s_size spsi *)
+(*   | SImplL (_, vphi) -> 1 + pre_v_size vphi *)
+(*   | SImplR (_, spsi) -> 1 + pre_s_size spsi *)
+(*   | SIffSS (_, sphi, spsi) -> 1 + pre_s_size sphi + pre_s_size spsi *)
+(*   | SIffVV (_, vphi, vpsi) -> 1 + pre_v_size vphi + pre_v_size vpsi *)
+(*   | SPrev (_, sphi) -> 1 + pre_s_size sphi *)
+(*   | SNext (_, sphi) -> 1 + pre_s_size sphi *)
+(*   | SOnce (_, sphi) -> 1 + pre_s_size sphi *)
+(*   | SHistorically (_, _, sphis) -> 1 + sum pre_s_size sphis *)
+(*   | SHistoricallyOutL _ -> 1 *)
+(*   | SEventually (_, sphi) -> 1 + pre_s_size sphi *)
+(*   | SAlways (_, _, sphis) -> 1 + sum pre_s_size sphis *)
+(*   | SSince (_, spsi, sphis) -> 1 + pre_s_size spsi + sum pre_s_size sphis *)
+(*   | SUntil (_, _, spsi, sphis) -> 1 + pre_s_size spsi + sum pre_s_size sphis *)
+(* and pre_v_size = function *)
+(*   | VFF _ -> 1 *)
+(*   | VAtom (_, _) -> 1 *)
+(*   | VNeg (_, sphi) -> 1 + pre_s_size sphi *)
+(*   | VDisj (_, vphi, vpsi) -> 1 + pre_v_size vphi + pre_v_size vpsi *)
+(*   | VConjL (_, vphi) -> 1 + pre_v_size vphi *)
+(*   | VConjR (_, vpsi) -> 1 + pre_v_size vpsi *)
+(*   | VImpl (_, sphi, vpsi) -> 1 + pre_s_size sphi + pre_v_size vpsi *)
+(*   | VIffSV (_, sphi, vpsi) -> 1 + pre_s_size sphi + pre_v_size vpsi *)
+(*   | VIffVS (_, vphi, spsi) -> 1 + pre_v_size vphi + pre_s_size spsi *)
+(*   | VPrev0 _ -> 1 *)
+(*   | VPrevOutL _ -> 1 *)
+(*   | VPrevOutR _ -> 1 *)
+(*   | VPrev (_, vphi) -> 1 + pre_v_size vphi *)
+(*   | VNextOutL _ -> 1 *)
+(*   | VNextOutR _ -> 1 *)
+(*   | VNext (_, vphi) -> 1 + pre_v_size vphi *)
+(*   | VOnceOutL _ -> 1 *)
+(*   | VOnce (_, _, vphis) -> 1 + sum pre_v_size vphis *)
+(*   | VHistorically (_, vphi) -> 1 + pre_v_size vphi *)
+(*   | VEventually (_, _, vphis) -> 1 + sum pre_v_size vphis *)
+(*   | VAlways (_, vphi) -> 1 + pre_v_size vphi *)
+(*   | VSince (_, vphi, vpsis) -> 1 + pre_v_size vphi + sum pre_v_size vpsis *)
+(*   | VSinceInf (_, _, vpsis) -> 1 + sum pre_v_size vpsis *)
+(*   | VSinceOutL _ -> 1 *)
+(*   | VUntil (_, _, vphi, vpsis) -> 1 + pre_v_size vphi + sum pre_v_size vpsis *)
+(*   | VUntilInf (_, _, vpsis) -> 1 + sum pre_v_size vpsis *)
+
+let rec s_size = function
   | STT _ -> 1
   | SAtom _ -> 1
-  | SNeg (_, vphi) -> 1 + pre_v_size vphi
-  | SDisjL (_, sphi) -> 1 + pre_s_size sphi
-  | SDisjR (_, spsi) -> 1 + pre_s_size spsi
-  | SConj (_, sphi, spsi) -> 1 + pre_s_size sphi + pre_s_size spsi
-  | SImplL (_, vphi) -> 1 + pre_v_size vphi
-  | SImplR (_, spsi) -> 1 + pre_s_size spsi
-  | SIffSS (_, sphi, spsi) -> 1 + pre_s_size sphi + pre_s_size spsi
-  | SIffVV (_, vphi, vpsi) -> 1 + pre_v_size vphi + pre_v_size vpsi
-  | SPrev (_, sphi) -> 1 + pre_s_size sphi
-  | SNext (_, sphi) -> 1 + pre_s_size sphi
-  | SOnce (_, sphi) -> 1 + pre_s_size sphi
-  | SHistorically (_, _, sphis) -> 1 + sum pre_s_size sphis
+  | SNeg (_, vphi) -> 1 + v_size vphi
+  | SDisjL (_, sphi) -> 1 + s_size sphi
+  | SDisjR (_, spsi) -> 1 + s_size spsi
+  | SConj (_, sphi, spsi) -> 1 + s_size sphi + s_size spsi
+  | SImplL (_, vphi) -> 1 + v_size vphi
+  | SImplR (_, spsi) -> 1 + s_size spsi
+  | SIffSS (_, sphi, spsi) -> 1 + s_size sphi + s_size spsi
+  | SIffVV (_, vphi, vpsi) -> 1 + v_size vphi + v_size vpsi
+  | SPrev (_, sphi) -> 1 + s_size sphi
+  | SNext (_, sphi) -> 1 + s_size sphi
+  | SOnce (_, sphi) -> 1 + s_size sphi
+  | SHistorically (_, _, sphis) -> 1 + sum s_size sphis
   | SHistoricallyOutL _ -> 1
-  | SEventually (_, sphi) -> 1 + pre_s_size sphi
-  | SAlways (_, _, sphis) -> 1 + sum pre_s_size sphis
-  | SSince (_, spsi, sphis) -> 1 + pre_s_size spsi + sum pre_s_size sphis
-  | SUntil (_, _, spsi, sphis) -> 1 + pre_s_size spsi + sum pre_s_size sphis
-and pre_v_size = function
+  | SEventually (_, sphi) -> 1 + s_size sphi
+  | SAlways (_, _, sphis) -> 1 + sum s_size sphis
+  | SSince (_, spsi, sphis) -> 1 + s_size spsi + sum s_size sphis
+  | SUntil (_, _, spsi, sphis) -> 1 + s_size spsi + sum s_size sphis
+and v_size = function
   | VFF _ -> 1
   | VAtom (_, _) -> 1
-  | VNeg (_, sphi) -> 1 + pre_s_size sphi
-  | VDisj (_, vphi, vpsi) -> 1 + pre_v_size vphi + pre_v_size vpsi
-  | VConjL (_, vphi) -> 1 + pre_v_size vphi
-  | VConjR (_, vpsi) -> 1 + pre_v_size vpsi
-  | VImpl (_, sphi, vpsi) -> 1 + pre_s_size sphi + pre_v_size vpsi
-  | VIffSV (_, sphi, vpsi) -> 1 + pre_s_size sphi + pre_v_size vpsi
-  | VIffVS (_, vphi, spsi) -> 1 + pre_v_size vphi + pre_s_size spsi
+  | VNeg (_, sphi) -> 1 + s_size sphi
+  | VDisj (_, vphi, vpsi) -> 1 + v_size vphi + v_size vpsi
+  | VConjL (_, vphi) -> 1 + v_size vphi
+  | VConjR (_, vpsi) -> 1 + v_size vpsi
+  | VImpl (_, sphi, vpsi) -> 1 + s_size sphi + v_size vpsi
+  | VIffSV (_, sphi, vpsi) -> 1 + s_size sphi + v_size vpsi
+  | VIffVS (_, vphi, spsi) -> 1 + v_size vphi + s_size spsi
   | VPrev0 _ -> 1
   | VPrevOutL _ -> 1
   | VPrevOutR _ -> 1
-  | VPrev (_, vphi) -> 1 + pre_v_size vphi
+  | VPrev (_, vphi) -> 1 + v_size vphi
   | VNextOutL _ -> 1
   | VNextOutR _ -> 1
-  | VNext (_, vphi) -> 1 + pre_v_size vphi
+  | VNext (_, vphi) -> 1 + v_size vphi
   | VOnceOutL _ -> 1
-  | VOnce (_, _, vphis) -> 1 + sum pre_v_size vphis
-  | VHistorically (_, vphi) -> 1 + pre_v_size vphi
-  | VEventually (_, _, vphis) -> 1 + sum pre_v_size vphis
-  | VAlways (_, vphi) -> 1 + pre_v_size vphi
-  | VSince (_, vphi, vpsis) -> 1 + pre_v_size vphi + sum pre_v_size vpsis
-  | VSinceInf (_, _, vpsis) -> 1 + sum pre_v_size vpsis
+  | VOnce (_, _, vphis) -> 1 + sum v_size vphis
+  | VHistorically (_, vphi) -> 1 + v_size vphi
+  | VEventually (_, _, vphis) -> 1 + sum v_size vphis
+  | VAlways (_, vphi) -> 1 + v_size vphi
+  | VSince (_, vphi, vpsis) -> 1 + v_size vphi + sum v_size vpsis
+  | VSinceInf (_, _, vpsis) -> 1 + sum v_size vpsis
   | VSinceOutL _ -> 1
-  | VUntil (_, _, vphi, vpsis) -> 1 + pre_v_size vphi + sum pre_v_size vpsis
-  | VUntilInf (_, _, vpsis) -> 1 + sum pre_v_size vpsis
+  | VUntil (_, _, vphi, vpsis) -> 1 + v_size vphi + sum v_size vpsis
+  | VUntilInf (_, _, vpsis) -> 1 + sum v_size vpsis
+
+let pre_s_size sp = 0
+let pre_v_size vp = 0
 
 (* time-point calculation *)
 (* note that we only use the explicit time-points for the cases
  * where the return value might be dubious (besides atomic prop/constants) *)
-let rec s_at = function
+let rec pre_s_at = function
   | STT (_, i) -> i
   | SAtom ((_, i), _) -> i
-  | SNeg (_, vphi) -> v_at vphi
-  | SDisjL (_, sphi) -> s_at sphi
-  | SDisjR (_, spsi) -> s_at spsi
-  | SConj (_, sphi, _) -> s_at sphi
-  | SImplL (_, vphi) -> v_at vphi
-  | SImplR (_, spsi) -> s_at spsi
-  | SIffSS (_, sphi, _) -> s_at sphi
-  | SIffVV (_, vphi, _) -> v_at vphi
-  | SPrev (_, sphi) -> s_at sphi + 1
-  | SNext (_, sphi) -> s_at sphi - 1
+  | SNeg (_, vphi) -> pre_v_at vphi
+  | SDisjL (_, sphi) -> pre_s_at sphi
+  | SDisjR (_, spsi) -> pre_s_at spsi
+  | SConj (_, sphi, _) -> pre_s_at sphi
+  | SImplL (_, vphi) -> pre_v_at vphi
+  | SImplR (_, spsi) -> pre_s_at spsi
+  | SIffSS (_, sphi, _) -> pre_s_at sphi
+  | SIffVV (_, vphi, _) -> pre_v_at vphi
+  | SPrev (_, sphi) -> pre_s_at sphi + 1
+  | SNext (_, sphi) -> pre_s_at sphi - 1
   | SOnce ((_, i), _) -> i
   | SHistorically ((_, i), _, _) -> i
   | SHistoricallyOutL (_, i) -> i
   | SEventually ((_, i), _) -> i
   | SAlways ((_, i), _, _) -> i
   | SSince (_, spsi, sphis) -> (match sphis with
-      | [] -> s_at spsi
-      | _ -> s_at (last sphis))
+      | [] -> pre_s_at spsi
+      | _ -> pre_s_at (last sphis))
   | SUntil (_, _, spsi, sphis) -> (match sphis with
-      | [] -> s_at spsi
-      | x :: _ -> s_at x)
-and v_at = function
+      | [] -> pre_s_at spsi
+      | x :: _ -> pre_s_at x)
+and pre_v_at = function
   | VFF (_, i) -> i
   | VAtom ((_, i), _) -> i
-  | VNeg (_, sphi) -> s_at sphi
-  | VDisj (_, vphi, _) -> v_at vphi
-  | VConjL (_, vphi) -> v_at vphi
-  | VConjR (_, vpsi) -> v_at vpsi
-  | VImpl (_, sphi, _) -> s_at sphi
-  | VIffSV (_, sphi, _) -> s_at sphi
-  | VIffVS (_, vphi, _) -> v_at vphi
+  | VNeg (_, sphi) -> pre_s_at sphi
+  | VDisj (_, vphi, _) -> pre_v_at vphi
+  | VConjL (_, vphi) -> pre_v_at vphi
+  | VConjR (_, vpsi) -> pre_v_at vpsi
+  | VImpl (_, sphi, _) -> pre_s_at sphi
+  | VIffSV (_, sphi, _) -> pre_s_at sphi
+  | VIffVS (_, vphi, _) -> pre_v_at vphi
   | VPrev0 _ -> 0
   | VPrevOutL (_, i) -> i
   | VPrevOutR (_, i) -> i
-  | VPrev (_, vphi) -> v_at vphi + 1
+  | VPrev (_, vphi) -> pre_v_at vphi + 1
   | VNextOutL (_, i) -> i
   | VNextOutR (_, i) -> i
-  | VNext (_, vphi) -> v_at vphi - 1
+  | VNext (_, vphi) -> pre_v_at vphi - 1
+  | VOnceOutL (_, i) -> i
+  | VOnce ((_, i), _, _) -> i
+  | VHistorically ((_, i), _) -> i
+  | VEventually ((_, i), _, _) -> i
+  | VAlways ((_, i), _) -> i
+  | VSince ((_, i), _, _) -> i
+  | VSinceInf ((_, i), _, _) -> i
+  | VSinceOutL (_, i) -> i
+  | VUntil ((_, i), _, _, _) -> i
+  | VUntilInf ((_, i), _, _) -> i
+
+let rec s_at = function
+  | STT (_, i) -> i
+  | SAtom ((_, i), _) -> i
+  | SNeg ((_, i), _) -> i
+  | SDisjL ((_, i), _) -> i
+  | SDisjR ((_, i), _) -> i
+  | SConj ((_, i), _, _) -> i
+  | SImplL ((_, i), _) -> i
+  | SImplR ((_, i), _) -> i
+  | SIffSS ((_, i), _, _) -> i
+  | SIffVV ((_, i), _, _) -> i
+  | SPrev ((_, i), _) -> i
+  | SNext ((_, i), _) -> i
+  | SOnce ((_, i), _) -> i
+  | SHistorically ((_, i), _, _) -> i
+  | SHistoricallyOutL (_, i) -> i
+  | SEventually ((_, i), _) -> i
+  | SAlways ((_, i), _, _) -> i
+  | SSince ((_, i), _, _) -> i
+  | SUntil ((_, i), _, _, _) -> i
+and v_at = function
+  | VFF (_, i) -> i
+  | VAtom ((_, i), _) -> i
+  | VNeg ((_, i), _) -> i
+  | VDisj ((_, i), _, _) -> i
+  | VConjL ((_, i), _) -> i
+  | VConjR ((_, i), _) -> i
+  | VImpl ((_, i), _, _) -> i
+  | VIffSV ((_, i), _, _) -> i
+  | VIffVS ((_, i), _, _) -> i
+  | VPrev0 (_, i) -> i
+  | VPrevOutL (_, i) -> i
+  | VPrevOutR (_, i) -> i
+  | VPrev ((_, i), _) -> i
+  | VNextOutL (_, i) -> i
+  | VNextOutR (_, i) -> i
+  | VNext ((_, i), _) -> i
   | VOnceOutL (_, i) -> i
   | VOnce ((_, i), _, _) -> i
   | VHistorically ((_, i), _) -> i
@@ -173,12 +272,12 @@ and v_at = function
   | VUntilInf ((_, i), _, _) -> i
 
 let pre_s_ltp sp = match sp with
-  | SUntil (_, _, sp2, _) -> s_at sp2
+  | SUntil (_, _, sp2, _) -> pre_s_at sp2
   | _ -> failwith "Bad arguments for s_ltp"
 
 let pre_v_etp vp = match vp with
   | VUntil ((_, i), _, _, []) -> i
-  | VUntil (_, _, _, vp2::_) -> v_at vp2
+  | VUntil (_, _, _, vp2::_) -> pre_v_at vp2
   | _ -> failwith "Bad arguments for v_etp"
 
 let s_ltp sp = match sp with
@@ -190,8 +289,8 @@ let v_etp vp = match vp with
   | _ -> failwith "Bad arguments for v_etp"
 
 let p_at = function
-| S s_p -> s_at s_p
-| V v_p -> v_at v_p
+| S s_p -> pre_s_at s_p
+| V v_p -> pre_v_at v_p
 
 (* Smart constructors *)
 
@@ -208,52 +307,52 @@ let satom (i, x) =
 
 let sneg p =
   let s = pre_s_size (SNeg (foo, p)) in
-  let i = s_at (SNeg (foo, p)) in
+  let i = pre_s_at (SNeg (foo, p)) in
   SNeg ((s, i), p)
 
 let sdisjl p =
   let s = pre_s_size (SDisjL (foo, p)) in
-  let i = s_at (SDisjL (foo, p)) in
+  let i = pre_s_at (SDisjL (foo, p)) in
   SDisjL ((s, i), p)
 
 let sdisjr p =
   let s = pre_s_size (SDisjR (foo, p)) in
-  let i = s_at (SDisjR (foo, p)) in
+  let i = pre_s_at (SDisjR (foo, p)) in
   SDisjR ((s, i), p)
 
 let sconj (p1, p2) =
   let s = pre_s_size (SConj (foo, p1, p2)) in
-  let i = s_at (SConj (foo, p1, p2)) in
+  let i = pre_s_at (SConj (foo, p1, p2)) in
   SConj ((s, i), p1, p2)
 
 let simpll p =
   let s = pre_s_size (SImplL (foo, p)) in
-  let i = s_at (SImplL (foo, p)) in
+  let i = pre_s_at (SImplL (foo, p)) in
   SImplL ((s, i), p)
 
 let simplr p =
   let s = pre_s_size (SImplR (foo, p)) in
-  let i = s_at (SImplR (foo, p)) in
+  let i = pre_s_at (SImplR (foo, p)) in
   SImplR ((s, i), p)
 
 let siffss (p1, p2) =
   let s = pre_s_size (SIffSS (foo, p1, p2)) in
-  let i = s_at (SIffSS (foo, p1, p2)) in
+  let i = pre_s_at (SIffSS (foo, p1, p2)) in
   SIffSS ((s, i), p1, p2)
 
 let siffvv (p1, p2) =
   let s = pre_s_size (SIffVV (foo, p1, p2)) in
-  let i = s_at (SIffVV (foo, p1, p2)) in
+  let i = pre_s_at (SIffVV (foo, p1, p2)) in
   SIffVV ((s, i), p1, p2)
 
 let sprev p =
   let s = pre_s_size (SPrev (foo, p)) in
-  let i = s_at (SPrev (foo, p)) in
+  let i = pre_s_at (SPrev (foo, p)) in
   SPrev ((s, i), p)
 
 let snext p =
   let s = pre_s_size (SNext (foo, p)) in
-  let i = s_at (SNext (foo, p)) in
+  let i = pre_s_at (SNext (foo, p)) in
   SNext ((s, i), p)
 
 let sonce (i, p) =
@@ -278,12 +377,12 @@ let salways (i, hi, ps) =
 
 let ssince (p1, p2s) =
   let s = pre_s_size (SSince (foo, p1, p2s)) in
-  let i = s_at (SSince (foo, p1, p2s)) in
+  let i = pre_s_at (SSince (foo, p1, p2s)) in
   SSince ((s, i), p1, p2s)
 
 let suntil (p1, p2s) =
   let s = pre_s_size (SUntil (foo, 0, p1, p2s)) in
-  let i = s_at (SUntil (foo, 0, p1, p2s)) in
+  let i = pre_s_at (SUntil (foo, 0, p1, p2s)) in
   let ltp = pre_s_ltp (SUntil (foo, 0, p1, p2s)) in
   SUntil ((s, i), ltp, p1, p2s)
 
@@ -297,42 +396,42 @@ let vatom (i, x) =
 
 let vneg p =
   let s = pre_v_size (VNeg (foo, p)) in
-  let i = v_at (VNeg (foo, p)) in
+  let i = pre_v_at (VNeg (foo, p)) in
   VNeg ((s, i), p)
 
 let vdisj (p1, p2) =
   let s = pre_v_size (VDisj (foo, p1, p2)) in
-  let i = v_at (VDisj (foo, p1, p2)) in
+  let i = pre_v_at (VDisj (foo, p1, p2)) in
   VDisj ((s, i), p1, p2)
 
 let vconjl p =
   let s = pre_v_size (VConjL (foo, p)) in
-  let i = v_at (VConjL (foo, p)) in
+  let i = pre_v_at (VConjL (foo, p)) in
   VConjL ((s, i), p)
 
 let vconjr p =
   let s = pre_v_size (VConjR (foo, p)) in
-  let i = v_at (VConjR (foo, p)) in
+  let i = pre_v_at (VConjR (foo, p)) in
   VConjR ((s, i), p)
 
 let vimpl (p1, p2) =
   let s = pre_v_size (VImpl (foo, p1, p2)) in
-  let i = v_at (VImpl (foo, p1, p2)) in
+  let i = pre_v_at (VImpl (foo, p1, p2)) in
   VImpl ((s, i), p1, p2)
 
 let viffsv (p1, p2) =
   let s = pre_v_size (VIffSV (foo, p1, p2)) in
-  let i = v_at (VIffSV (foo, p1, p2)) in
+  let i = pre_v_at (VIffSV (foo, p1, p2)) in
   VIffSV ((s, i), p1, p2)
 
 let viffvs (p1, p2) =
   let s = pre_v_size (VIffVS (foo, p1, p2)) in
-  let i = v_at (VIffVS (foo, p1, p2)) in
+  let i = pre_v_at (VIffVS (foo, p1, p2)) in
   VIffVS ((s, i), p1, p2)
 
 let vprev0 =
   let s = pre_v_size (VPrev0 foo) in
-  let i = v_at (VPrev0 foo) in
+  let i = pre_v_at (VPrev0 foo) in
   VPrev0 (s, i)
 
 let vprevoutl i =
@@ -345,7 +444,7 @@ let vprevoutr i =
 
 let vprev p =
   let s = pre_v_size (VPrev (foo, p)) in
-  let i = v_at (VPrev (foo, p)) in
+  let i = pre_v_at (VPrev (foo, p)) in
   VPrev ((s, i), p)
 
 let vnextoutl i =
@@ -358,7 +457,7 @@ let vnextoutr i =
 
 let vnext p =
   let s = pre_v_size (VNext (foo, p)) in
-  let i = v_at (VNext (foo, p)) in
+  let i = pre_v_at (VNext (foo, p)) in
   VNext ((s, i), p)
 
 let vonceoutl i =
@@ -432,53 +531,53 @@ let vdrop vp = match vp with
  * Measure: size                   *
  *                                 *
  ***********************************)
-let rec s_size = function
-  | STT (s, _) -> s
-  | SAtom ((s, _), _) -> s
-  | SNeg ((s, _), _) -> s
-  | SDisjL ((s, _), _) -> s
-  | SDisjR ((s, _), _) -> s
-  | SConj ((s, _), _, _) -> s
-  | SImplL ((s, _), _) -> s
-  | SImplR ((s, _), _) -> s
-  | SIffSS ((s, _), _, _) -> s
-  | SIffVV ((s, _), _, _) -> s
-  | SPrev ((s, _), _) -> s
-  | SNext ((s, _), _) -> s
-  | SOnce ((s, _), _) -> s
-  | SHistorically ((s, _), _, _) -> s
-  | SHistoricallyOutL (s, _) -> s
-  | SEventually ((s, _), _) -> s
-  | SAlways ((s, _), _, _) -> s
-  | SSince ((s, _), _, _) -> s
-  | SUntil ((s, _), _, _, _) -> s
-and v_size = function
-  | VFF (s, _) -> s
-  | VAtom ((s, _), _) -> s
-  | VNeg ((s, _), _) -> s
-  | VDisj ((s, _), _, _) -> s
-  | VConjL ((s, _), _) -> s
-  | VConjR ((s, _), _) -> s
-  | VImpl ((s, _), _, _) -> s
-  | VIffSV ((s, _), _, _) -> s
-  | VIffVS ((s, _), _, _) -> s
-  | VPrev0 (s, _) -> s
-  | VPrevOutL (s, _) -> s
-  | VPrevOutR (s, _) -> s
-  | VPrev ((s, _), _) -> s
-  | VNextOutL (s, _) -> s
-  | VNextOutR (s, _) -> s
-  | VNext ((s, _), _) -> s
-  | VOnceOutL (s, _) -> s
-  | VOnce ((s, _), _, _) -> s
-  | VHistorically ((s, _), _) -> s
-  | VEventually ((s, _), _, _) -> s
-  | VAlways ((s, _), _) -> s
-  | VSince ((s, _), _, _) -> s
-  | VSinceInf ((s, _), _, _) -> s
-  | VSinceOutL (s, _) -> s
-  | VUntil ((s, _), _, _, _) -> s
-  | VUntilInf ((s, _), _, _) -> s
+(* let rec s_size = function *)
+(*   | STT (s, _) -> s *)
+(*   | SAtom ((s, _), _) -> s *)
+(*   | SNeg ((s, _), _) -> s *)
+(*   | SDisjL ((s, _), _) -> s *)
+(*   | SDisjR ((s, _), _) -> s *)
+(*   | SConj ((s, _), _, _) -> s *)
+(*   | SImplL ((s, _), _) -> s *)
+(*   | SImplR ((s, _), _) -> s *)
+(*   | SIffSS ((s, _), _, _) -> s *)
+(*   | SIffVV ((s, _), _, _) -> s *)
+(*   | SPrev ((s, _), _) -> s *)
+(*   | SNext ((s, _), _) -> s *)
+(*   | SOnce ((s, _), _) -> s *)
+(*   | SHistorically ((s, _), _, _) -> s *)
+(*   | SHistoricallyOutL (s, _) -> s *)
+(*   | SEventually ((s, _), _) -> s *)
+(*   | SAlways ((s, _), _, _) -> s *)
+(*   | SSince ((s, _), _, _) -> s *)
+(*   | SUntil ((s, _), _, _, _) -> s *)
+(* and v_size = function *)
+(*   | VFF (s, _) -> s *)
+(*   | VAtom ((s, _), _) -> s *)
+(*   | VNeg ((s, _), _) -> s *)
+(*   | VDisj ((s, _), _, _) -> s *)
+(*   | VConjL ((s, _), _) -> s *)
+(*   | VConjR ((s, _), _) -> s *)
+(*   | VImpl ((s, _), _, _) -> s *)
+(*   | VIffSV ((s, _), _, _) -> s *)
+(*   | VIffVS ((s, _), _, _) -> s *)
+(*   | VPrev0 (s, _) -> s *)
+(*   | VPrevOutL (s, _) -> s *)
+(*   | VPrevOutR (s, _) -> s *)
+(*   | VPrev ((s, _), _) -> s *)
+(*   | VNextOutL (s, _) -> s *)
+(*   | VNextOutR (s, _) -> s *)
+(*   | VNext ((s, _), _) -> s *)
+(*   | VOnceOutL (s, _) -> s *)
+(*   | VOnce ((s, _), _, _) -> s *)
+(*   | VHistorically ((s, _), _) -> s *)
+(*   | VEventually ((s, _), _, _) -> s *)
+(*   | VAlways ((s, _), _) -> s *)
+(*   | VSince ((s, _), _, _) -> s *)
+(*   | VSinceInf ((s, _), _, _) -> s *)
+(*   | VSinceOutL (s, _) -> s *)
+(*   | VUntil ((s, _), _, _, _) -> s *)
+(*   | VUntilInf ((s, _), _, _) -> s *)
 
 let size = function
   | S s_p -> s_size s_p
@@ -592,10 +691,10 @@ let minsize_list = function
  *   | VPrev0 -> 0
  *   | VPrevOutL i -> i
  *   | VPrevOutR i -> i
- *   | VPrev vphi -> max (v_at (VPrev vphi)) (v_high vphi)
+ *   | VPrev vphi -> max (pre_v_at (VPrev vphi)) (v_high vphi)
  *   | VNextOutL i -> i
  *   | VNextOutR i -> i
- *   | VNext vphi -> max (v_at (VNext vphi)) (v_high vphi)
+ *   | VNext vphi -> max (pre_v_at (VNext vphi)) (v_high vphi)
  *   (\* TODO: Check if we should consider i here *\)
  *   | VOnceOutL i -> i
  *   | VOnce (_, _, vphis) -> max_list (List.map v_high vphis)
@@ -641,10 +740,10 @@ let minsize_list = function
  *   | VPrev0 -> 0
  *   | VPrevOutL i -> i
  *   | VPrevOutR i -> i
- *   | VPrev vphi -> min (v_at (VPrev vphi)) (v_low vphi)
+ *   | VPrev vphi -> min (pre_v_at (VPrev vphi)) (v_low vphi)
  *   | VNextOutL i -> i
  *   | VNextOutR i -> i
- *   | VNext vphi -> min (v_at (VNext vphi)) (v_low vphi)
+ *   | VNext vphi -> min (pre_v_at (VNext vphi)) (v_low vphi)
  *   | VOnceOutL i -> i
  *   | VOnce (_, _, vphis) -> min_list (List.map v_low vphis)
  *   | VHistorically (_, vphi) -> v_low vphi
@@ -735,60 +834,60 @@ let rec s_to_string indent p =
   match p with
   | STT (_, i) -> Printf.sprintf "%strue{%d}" indent i
   | SAtom ((_, i), a) -> Printf.sprintf "%s%s{%d}" indent a i
-  | SNeg (_, vphi) -> Printf.sprintf "%sSNeg{%d}\n%s" indent (s_at p) (v_to_string indent' vphi)
-  | SDisjL (_, sphi) -> Printf.sprintf "%sSDisjL{%d}\n%s" indent (s_at p) (s_to_string indent' sphi)
-  | SDisjR (_, spsi) -> Printf.sprintf "%sSDisjR{%d}\n%s" indent (s_at p) (s_to_string indent' spsi)
-  | SConj (_, sphi, spsi) -> Printf.sprintf "%sSConj{%d}\n%s\n%s" indent (s_at p) (s_to_string indent' sphi) (s_to_string indent' spsi)
-  | SImplL (_, vphi) -> Printf.sprintf "%sSImplL{%d}\n%s" indent (s_at p) (v_to_string indent' vphi)
-  | SImplR (_, spsi) -> Printf.sprintf "%sSImplR{%d}\n%s" indent (s_at p) (s_to_string indent' spsi)
-  | SIffSS (_, sphi, spsi) -> Printf.sprintf "%sSIffSS{%d}\n%s\n%s" indent (s_at p) (s_to_string indent' sphi) (s_to_string indent' spsi)
-  | SIffVV (_, vphi, vpsi) -> Printf.sprintf "%sSIffVV{%d}\n%s\n%s" indent (s_at p) (v_to_string indent' vphi) (v_to_string indent' vpsi)
-  | SPrev (_, sphi) -> Printf.sprintf "%sSPrev{%d}\n%s" indent (s_at p) (s_to_string indent' sphi)
-  | SNext (_, sphi) -> Printf.sprintf "%sSNext{%d}\n%s" indent (s_at p) (s_to_string indent' sphi)
-  | SOnce (_, sphi) -> Printf.sprintf "%sSOnce{%d}\n%s" indent (s_at p) (s_to_string indent' sphi)
-  | SHistorically (_, _, sphis) -> Printf.sprintf "%sSHistorically{%d}\n%s" indent (s_at p) (list_to_string indent' s_to_string sphis)
+  | SNeg (_, vphi) -> Printf.sprintf "%sSNeg{%d}\n%s" indent (pre_s_at p) (v_to_string indent' vphi)
+  | SDisjL (_, sphi) -> Printf.sprintf "%sSDisjL{%d}\n%s" indent (pre_s_at p) (s_to_string indent' sphi)
+  | SDisjR (_, spsi) -> Printf.sprintf "%sSDisjR{%d}\n%s" indent (pre_s_at p) (s_to_string indent' spsi)
+  | SConj (_, sphi, spsi) -> Printf.sprintf "%sSConj{%d}\n%s\n%s" indent (pre_s_at p) (s_to_string indent' sphi) (s_to_string indent' spsi)
+  | SImplL (_, vphi) -> Printf.sprintf "%sSImplL{%d}\n%s" indent (pre_s_at p) (v_to_string indent' vphi)
+  | SImplR (_, spsi) -> Printf.sprintf "%sSImplR{%d}\n%s" indent (pre_s_at p) (s_to_string indent' spsi)
+  | SIffSS (_, sphi, spsi) -> Printf.sprintf "%sSIffSS{%d}\n%s\n%s" indent (pre_s_at p) (s_to_string indent' sphi) (s_to_string indent' spsi)
+  | SIffVV (_, vphi, vpsi) -> Printf.sprintf "%sSIffVV{%d}\n%s\n%s" indent (pre_s_at p) (v_to_string indent' vphi) (v_to_string indent' vpsi)
+  | SPrev (_, sphi) -> Printf.sprintf "%sSPrev{%d}\n%s" indent (pre_s_at p) (s_to_string indent' sphi)
+  | SNext (_, sphi) -> Printf.sprintf "%sSNext{%d}\n%s" indent (pre_s_at p) (s_to_string indent' sphi)
+  | SOnce (_, sphi) -> Printf.sprintf "%sSOnce{%d}\n%s" indent (pre_s_at p) (s_to_string indent' sphi)
+  | SHistorically (_, _, sphis) -> Printf.sprintf "%sSHistorically{%d}\n%s" indent (pre_s_at p) (list_to_string indent' s_to_string sphis)
   | SHistoricallyOutL (_, i) -> Printf.sprintf "%sSHistoricallyOutL{%d}" indent' i
-  | SEventually (_, sphi) -> Printf.sprintf "%sSEventually{%d}\n%s" indent (s_at p) (s_to_string indent' sphi)
-  | SAlways (_, _, sphis) -> Printf.sprintf "%sSAlways{%d}\n%s" indent (s_at p) (list_to_string indent' s_to_string sphis)
+  | SEventually (_, sphi) -> Printf.sprintf "%sSEventually{%d}\n%s" indent (pre_s_at p) (s_to_string indent' sphi)
+  | SAlways (_, _, sphis) -> Printf.sprintf "%sSAlways{%d}\n%s" indent (pre_s_at p) (list_to_string indent' s_to_string sphis)
   | SSince (_, spsi, sphis) ->
-      Printf.sprintf "%sSSince{%d}\n%s\n%s" indent (s_at p) (s_to_string indent' spsi) (list_to_string indent' s_to_string sphis)
+      Printf.sprintf "%sSSince{%d}\n%s\n%s" indent (pre_s_at p) (s_to_string indent' spsi) (list_to_string indent' s_to_string sphis)
   | SUntil (_, _, spsi, sphis) ->
-      Printf.sprintf "%sSUntil{%d}\n%s\n%s" indent (s_at p) (list_to_string indent' s_to_string sphis) (s_to_string indent' spsi)
+      Printf.sprintf "%sSUntil{%d}\n%s\n%s" indent (pre_s_at p) (list_to_string indent' s_to_string sphis) (s_to_string indent' spsi)
 and v_to_string indent p =
   let indent' = "\t" ^ indent in
   match p with
   | VFF (_, i) -> Printf.sprintf "%sfalse{%d}" indent i
   | VAtom ((_, i), a) -> Printf.sprintf "%s!%s{%d}" indent a i
-  | VNeg (_, sphi) -> Printf.sprintf "%sVNeg{%d}\n%s" indent (v_at p) (s_to_string indent' sphi)
-  | VDisj (_, vphi, vpsi) -> Printf.sprintf "%sVDisj{%d}\n%s\n%s" indent (v_at p) (v_to_string indent' vphi) (v_to_string indent' vpsi)
-  | VConjL (_, vphi) -> Printf.sprintf "%sVConjL{%d}\n%s" indent (v_at p) (v_to_string indent' vphi)
-  | VConjR (_, vpsi) -> Printf.sprintf "%sVConjR{%d}\n%s" indent (v_at p) (v_to_string indent' vpsi)
-  | VImpl (_, sphi, vpsi) -> Printf.sprintf "%sVImpl{%d}\n%s\n%s" indent (v_at p) (s_to_string indent' sphi) (v_to_string indent' vpsi)
-  | VIffSV (_, sphi, vpsi) -> Printf.sprintf "%sVIffSV{%d}\n%s\n%s" indent (v_at p) (s_to_string indent' sphi) (v_to_string indent' vpsi)
-  | VIffVS (_, vphi, spsi) -> Printf.sprintf "%sVIffVS{%d}\n%s\n%s" indent (v_at p) (v_to_string indent' vphi) (s_to_string indent' spsi)
+  | VNeg (_, sphi) -> Printf.sprintf "%sVNeg{%d}\n%s" indent (pre_v_at p) (s_to_string indent' sphi)
+  | VDisj (_, vphi, vpsi) -> Printf.sprintf "%sVDisj{%d}\n%s\n%s" indent (pre_v_at p) (v_to_string indent' vphi) (v_to_string indent' vpsi)
+  | VConjL (_, vphi) -> Printf.sprintf "%sVConjL{%d}\n%s" indent (pre_v_at p) (v_to_string indent' vphi)
+  | VConjR (_, vpsi) -> Printf.sprintf "%sVConjR{%d}\n%s" indent (pre_v_at p) (v_to_string indent' vpsi)
+  | VImpl (_, sphi, vpsi) -> Printf.sprintf "%sVImpl{%d}\n%s\n%s" indent (pre_v_at p) (s_to_string indent' sphi) (v_to_string indent' vpsi)
+  | VIffSV (_, sphi, vpsi) -> Printf.sprintf "%sVIffSV{%d}\n%s\n%s" indent (pre_v_at p) (s_to_string indent' sphi) (v_to_string indent' vpsi)
+  | VIffVS (_, vphi, spsi) -> Printf.sprintf "%sVIffVS{%d}\n%s\n%s" indent (pre_v_at p) (v_to_string indent' vphi) (s_to_string indent' spsi)
   | VPrev0 _ -> Printf.sprintf "%sVPrev0{0}" indent'
   | VPrevOutL (_, i) -> Printf.sprintf "%sVPrevOutL{%d}" indent' i
   | VPrevOutR (_, i) -> Printf.sprintf "%sVPrevOutR{%d}" indent' i
-  | VPrev (_, vphi) -> Printf.sprintf "%sVPrev{%d}\n%s" indent (v_at p) (v_to_string indent' vphi)
+  | VPrev (_, vphi) -> Printf.sprintf "%sVPrev{%d}\n%s" indent (pre_v_at p) (v_to_string indent' vphi)
   | VNextOutL (_, i) -> Printf.sprintf "%sVNextOutL{%d}" indent' i
   | VNextOutR (_, i) -> Printf.sprintf "%sVNextOutR{%d}" indent' i
-  | VNext (_, vphi) -> Printf.sprintf "%sVNext{%d}\n%s" indent (v_at p) (v_to_string indent' vphi)
+  | VNext (_, vphi) -> Printf.sprintf "%sVNext{%d}\n%s" indent (pre_v_at p) (v_to_string indent' vphi)
   | VOnceOutL (_, i) -> Printf.sprintf "%sVOnceOutL{%d}" indent' i
   | VOnce (_, _, vphis) ->
-     Printf.sprintf "%sVOnce{%d}\n%s" indent (v_at p) (list_to_string indent' v_to_string vphis)
-  | VHistorically (_, vphi) -> Printf.sprintf "%sVHistorically{%d}\n%s" indent (v_at p) (v_to_string indent' vphi)
+     Printf.sprintf "%sVOnce{%d}\n%s" indent (pre_v_at p) (list_to_string indent' v_to_string vphis)
+  | VHistorically (_, vphi) -> Printf.sprintf "%sVHistorically{%d}\n%s" indent (pre_v_at p) (v_to_string indent' vphi)
   | VEventually (_, _, vphis) ->
-     Printf.sprintf "%sVEventually{%d}\n%s" indent (v_at p) (list_to_string indent' v_to_string vphis)
-  | VAlways (_, vphi) -> Printf.sprintf "%sVAlways{%d}\n%s" indent (v_at p) (v_to_string indent' vphi)
+     Printf.sprintf "%sVEventually{%d}\n%s" indent (pre_v_at p) (list_to_string indent' v_to_string vphis)
+  | VAlways (_, vphi) -> Printf.sprintf "%sVAlways{%d}\n%s" indent (pre_v_at p) (v_to_string indent' vphi)
   | VSince (_, vphi, vpsis) ->
-     Printf.sprintf "%sVSince{%d}\n%s\n%s" indent (v_at p) (v_to_string indent' vphi) (list_to_string indent' v_to_string vpsis)
+     Printf.sprintf "%sVSince{%d}\n%s\n%s" indent (pre_v_at p) (v_to_string indent' vphi) (list_to_string indent' v_to_string vpsis)
   | VSinceInf (_, _, vphis) ->
-     Printf.sprintf "%sVSinceInf{%d}\n%s" indent (v_at p) (list_to_string indent' v_to_string vphis)
+     Printf.sprintf "%sVSinceInf{%d}\n%s" indent (pre_v_at p) (list_to_string indent' v_to_string vphis)
   | VSinceOutL (_, i) -> Printf.sprintf "%sVSinceOutL{%d}" indent' i
   | VUntil (_, _, vphi, vpsis) ->
-      Printf.sprintf "%sVUntil{%d}\n%s\n%s" indent (v_at p) (list_to_string indent' v_to_string vpsis) (v_to_string indent' vphi)
+      Printf.sprintf "%sVUntil{%d}\n%s\n%s" indent (pre_v_at p) (list_to_string indent' v_to_string vpsis) (v_to_string indent' vphi)
   | VUntilInf (_, _, vpsis) ->
-     Printf.sprintf "%sVUntilInf{%d}\n%s" indent (v_at p) (list_to_string indent' v_to_string vpsis)
+     Printf.sprintf "%sVUntilInf{%d}\n%s" indent (pre_v_at p) (list_to_string indent' v_to_string vpsis)
 
 let expl_to_string = function
   | S p -> s_to_string "" p
