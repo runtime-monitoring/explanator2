@@ -1,6 +1,10 @@
+This repository is no longer maintained.
+
+We extended the specification language of Explanator2, and the resulting tool is named [WhyMon](https://github.com/runtime-monitoring/whymon).
+
 # Explanator2: Judgment Day
 
-The Explanator2 is an online monitor that produces verdicts in the form of explanations for Metric Temporal Logic formulas on arbitrary traces.
+Explanator2 is an online monitor that produces verdicts in the form of explanations for Metric Temporal Logic formulas on arbitrary traces.
 
 It is the successor of the [Explanator](https://bitbucket.org/traytel/explanator/src/master/), a previous work by [Bhargav Bhatt](https://bhargavbh.github.io/) and [Dmitriy Traytel](https://www21.in.tum.de/~traytel/).
 
@@ -10,7 +14,7 @@ These are the basic steps to take if you want to run the project on your local m
 
 ### Prerequisites
 
-The Explanator2 depends on a recent (>= 4.04.0) version of the OCaml compiler.
+Explanator2 depends on a recent (>= 4.04.0) version of the OCaml compiler.
 
 We recommend that you install the OCaml compiler and necessary libraries with [OPAM](https://opam.ocaml.org/doc/Install.html), the OCaml package manager.
 
@@ -116,6 +120,12 @@ from inside the [formalization](formalization/) folder.
 {WEIGHTS} :=   {ATOM}: {NAT}
              | {ATOM}: {NAT} \n {WEIGHTS}
 ```
+
+## Authors
+- Andrei Herasimau
+- Dmitriy Traytel
+- Leonardo Lima
+- Martin Raszyk
 
 ## License
 
